@@ -1,7 +1,7 @@
 - 👋 Hi, I’m @jothim89
 - 👀 I’m interested in Python Program
 - 🌱 I’m currently Working on UFT With Automation fram work
-- 💞️ I’m looking to collaborate on Automation workr with UFT and Python.
+- 💞️ I’m looking to collaborate on Automation with UFT and Python.
 
 
 <!---
