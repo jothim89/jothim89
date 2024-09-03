@@ -1,0 +1,2337 @@
+﻿Set wshShell = CreateObject("WScript.Shell")
+Set fso = CreateObject("Scripting.FileSystemObject")
+Set qtApp = CreateObject("QuickTest.Application")
+
+'**********UFT FUNCTIONS**********
+Function writeTestResultToSQL(testRemark, knownIssue)
+	If env_SQLReportTable = "KDS" Then
+		maitredVersion = getProductVersion("C:\Users\Public\CVM", "KDS.exe")
+	else
+		maitredVersion = getMDVersion(env_PathMaitredPrg, "bosrv.exe")
+	End If
+
+	If env_LocalComputerName = "MAITRED-REGRESS" OR env_LocalComputerName = "AUTOMATED-REGRE" Then
+		detailedTestResultPath = "HTTP://"& env_ResultsPath_Server &"/"& maitredVersion &"/"& regressionScope &"/"& regressionSetName &"/"& qtApp.Test.Name &"/Report"
+	Else
+		detailedTestResultPath = "HTTP://"& env_ResultsPath_Server &"/DebugResults"& maitredVersion &"/"& regressionScope &"/"& regressionSetName &"/"& qtApp.Test.Name &"/Report"
+	End If
+	If Reporter.RunStatus = 0 AND knownIssue = FALSE Then
+		uftTestStatus = "PASS"
+	End If
+	If Reporter.RunStatus = 0 AND knownIssue Then
+		uftTestStatus = "KNOWN"
+	End If
+	If Reporter.RunStatus <> 0 AND knownIssue = FALSE Then
+		uftTestStatus = "FAIL"
+	End If
+	If Reporter.RunStatus <> 0 AND knownIssue Then
+		uftTestStatus = "KNOWN"
+	End If
+	'If PC is regression server, update release result table, else update test result table
+	If env_LocalComputerName = "MAITRED-REGRESS" OR env_LocalComputerName = "AUTOMATED-REGRE" Then
+		SQLQueryUserPass env_SQLReportServer, "UFTResults", "resultuser", "P0sera", _
+		"UPDATE [UFTResults].[dbo].["& env_SQLReportTable &"] SET Status = '"& uftTestStatus & "', SpecialNote = '"& testRemark &"' WHERE [MDVersion] = '"& maitredVersion & "' AND [RegressionSetName] = '"& regressionSetName &"' AND [TestName] = '"& qtApp.Test.Name & "' AND [TestScope] = '"& regressionScope &"' IF @@ROWCOUNT=0 INSERT INTO [UFTResults].[dbo].["& env_SQLReportTable &"] ([Date], [MDVersion], [MDDatabase], [RegressionSetName], [Status], [TestName], [SpecialNote], [DetailedResultsPath], [TestScope])Values(CURRENT_TIMESTAMP,'"& maitredVersion & "', '"& env_MaitreDDatabase &"','"& regressionSetName &"', '"& uftTestStatus &"', '"& qtApp.Test.Name &"', '"& testRemark &"', '"& detailedTestResultPath &"/run_results.html', '" & regressionScope &"')"
+	Else
+		SQLQueryUserPass env_SQLReportServer, "UFTResults", "resultuser", "P0sera", "UPDATE [UFTResults].[dbo].["& env_SQLReportTable &"-Test] SET Status = '"& uftTestStatus & "', SpecialNote = '"& testRemark &"' WHERE [MDVersion] = '"& maitredVersion & "' AND [RegressionSetName] = '"& regressionSetName &"' AND [TestName] = '"& qtApp.Test.Name & "' AND [TestScope] = '"& regressionScope &"' IF @@ROWCOUNT=0 INSERT INTO [UFTResults].[dbo].["& env_SQLReportTable &"-Test] ([Date], [MDVersion], [MDDatabase], [RegressionSetName], [Status], [TestName], [SpecialNote], [DetailedResultsPath], [TestScope])Values(CURRENT_TIMESTAMP,'"& maitredVersion & "', '"& env_MaitreDDatabase &"','"& regressionSetName &"', '"& uftTestStatus &"', '"& qtApp.Test.Name &"', '"& testRemark &"', '"& detailedTestResultPath &"/run_results.html', '"& regressionScope &"')"
+	End If
+End Function
+
+Function waitObjectToAppear(winObject, waitFor, click)
+	If(winObject.Exist(waitFor)) Then
+		If click Then
+			winObject.Click
+		End If
+ 	End If
+End Function
+
+Function waitForObjectToDisappear(winObject)
+	For i = 1 To 10 Step 1
+		If Not winObject.Exist(1) Then
+			i = 10
+		End If
+	Next
+End Function
+
+Function waitproperty(object, time)
+   If object.WaitProperty("visible", True, time) Then
+   object.click
+End If
+End Function
+
+Function WeblementSelectbyProperty(object, text)
+	If object.GetRoProperty("innertext") = text Then
+	wait(2)
+	object.click
+	Else 
+	Browser("Maitre'D").Sync
+    object.RefreshObject
+    object.Click		
+	End If
+End Function
+
+
+
+Function SelectServerNumberwithTable(ServerNumber)
+    Select Case ServerNumber
+    	Case 1 
+    	Window("Maitre'D POS").WinObject("POS Screen").Click 313,302
+    	Window("Maitre'D POS").WinObject("POS Screen").Click 631,169
+    	Window("Maitre'D POS").WinObject("POS Screen").Click 321,301
+        Window("Maitre'D POS").WinObject("POS Screen").Click 653,165
+    	Case 2 
+    	Window("Maitre'D POS").WinObject("POS Screen").Click 404,300
+    	Window("Maitre'D POS").WinObject("POS Screen").Click 631,169
+        Case 3 
+        Window("Maitre'D POS").WinObject("POS Screen").Click 495,301
+        Window("Maitre'D POS").WinObject("POS Screen").Click 631,169
+        Case 4 
+        Window("Maitre'D POS").WinObject("POS Screen").Click 322,242
+        Window("Maitre'D POS").WinObject("POS Screen").Click 631,169
+        Window("Maitre'D POS").WinObject("POS Screen").Click 321,301
+        Window("Maitre'D POS").WinObject("POS Screen").Click 653,165
+        Case 5 
+        Window("Maitre'D POS").WinObject("POS Screen").Click 407,242
+        Window("Maitre'D POS").WinObject("POS Screen").Click 631,169
+        Window("Maitre'D POS").WinObject("POS Screen").Click 321,301
+        Window("Maitre'D POS").WinObject("POS Screen").Click 653,165
+        Case 6 
+        Window("Maitre'D POS").WinObject("POS Screen").Click 492,233
+        Window("Maitre'D POS").WinObject("POS Screen").Click 631,169
+        Case 7 
+        Window("Maitre'D POS").WinObject("POS Screen").Click 312,171
+        Window("Maitre'D POS").WinObject("POS Screen").Click 631,169
+        Window("Maitre'D POS").WinObject("POS Screen").Click 321,301
+        Window("Maitre'D POS").WinObject("POS Screen").Click 653,165
+        Case 8 
+        Window("Maitre'D POS").WinObject("POS Screen").Click 403,167
+        Window("Maitre'D POS").WinObject("POS Screen").Click 631,169
+        Window("Maitre'D POS").WinObject("POS Screen").Click 321,301
+        Window("Maitre'D POS").WinObject("POS Screen").Click 653,165
+        Case 9 
+        Window("Maitre'D POS").WinObject("POS Screen").Click 486,170
+        Window("Maitre'D POS").WinObject("POS Screen").Click 631,169
+        Case 10
+          Window("Maitre'D POS").WinObject("POS Screen").Click 331,306
+          Window("Maitre'D POS").WinObject("POS Screen").Click 352,370
+          Window("Maitre'D POS").WinObject("POS Screen").Click 631,169
+    End Select
+End Function
+
+
+Function compareCellValue(row1, row2, sheetName, columnIndex, checkpointName)
+	DataTable.SetCurrentRow(row1)
+	row1Val = DataTable.Value(columnIndex, sheetName)
+	DataTable.SetCurrentRow(row2)
+	row2Val = DataTable.Value(columnIndex, sheetName)
+	columnName = DataTable.GetSheet(sheetName).GetParameter(columnIndex).Name
+	If row1Val = row2Val Then
+		Reporter.ReportEvent micPass, checkpointName, "Value """ &  row1Val & """ from column """ & columnName & """ are identical."
+	Else
+		Reporter.ReportEvent micFail, checkpointName, "Values """ & row1Val & """ & """ & row2Val & """ from column """ & columnName & """ are different!"
+	End If
+End Function
+
+Function addValueToNewColumn(sheetName, columnName, rowNumber, cellValue)
+	On error resume next
+	Set MySheet = DataTable.GetSheet(sheetName)
+	If Err.Number <> 0 Then
+		Err.Clear
+		On error goto 0
+		DataTable.AddSheet(sheetName)
+	End If
+	val=DataTable(columnName, sheetName)
+	If err.number<> 0 then
+		Err.Clear
+		On error goto 0
+		DataTable.GetSheet(sheetName).AddParameter columnName, ""
+	End If
+	DataTable.SetCurrentRow(rowNumber)
+	DataTable(columnName, sheetName) = "" & Trim(cellValue) & ""
+End Function
+
+'**********Regression Report Functions**********
+Function pushReportsToServer()
+	objStartFolder = env_PathVSMap &"UFT\Tests\"& regressionScope & "\" & regressionSetName &"\"& env_SQLReportTable
+	
+	'Get product version
+	maitredVersion = getMDVersion(env_PathMaitredPrg, "bosrv.exe")
+	
+	If env_LocalComputerName = "MAITRED-REGRESS" OR env_LocalComputerName = "AUTOMATED-REGRE" Then
+		isTest = ""	
+	Else
+		isTest = "DebugResults\"
+	End If
+	
+	createReportBaseFolders isTest, maitredVersion
+	createReportSubFolders fso.GetFolder(objStartFolder), isTest, maitredVersion
+End Function
+
+
+'Create base folder structure
+Function createReportBaseFolders(isTest, mdVersion)
+	If (isTest = "DebugResults") AND NOT (fso.FolderExists("\\"& env_ResultsPath_Server &"\DetailedResults\DebugResults")) Then
+		fso.CreateFolder("\\"& env_ResultsPath_Server &"\DetailedResults\"& isTest )
+	End If
+	If NOT fso.FolderExists("\\"& env_ResultsPath_Server &"\DetailedResults\"& isTest & mdVersion) Then
+		fso.CreateFolder("\\"& env_ResultsPath_Server &"\DetailedResults\"& isTest & mdVersion &"\")
+	End If
+	If NOT (fso.FolderExists("\\"& env_ResultsPath_Server &"\DetailedResults\"& isTest & mdVersion &"\"& regressionScope)) Then
+		fso.CreateFolder("\\"& env_ResultsPath_Server &"\DetailedResults\"& isTest & mdVersion &"\"& regressionScope &"\")
+	End If
+	If NOT (fso.FolderExists("\\"& env_ResultsPath_Server &"\DetailedResults\"& isTest & mdVersion &"\"& regressionScope &"\"& regressionSetName)) Then
+		fso.CreateFolder("\\"& env_ResultsPath_Server &"\DetailedResults\"& isTest & mdVersion &"\"& regressionScope &"\"& regressionSetName &"\")
+	End If
+End Function
+
+
+'Create test subfolders
+Function createReportSubFolders(Folder, isTest, mdVersion)
+	For Each Subfolder in Folder.Subfolders
+		If Subfolder.Name = "Report" Then
+			If (Subfolder.Name = "Report") AND NOT (Subfolder.ParentFolder.Name = "Report") Then
+				If NOT (fso.FolderExists("\\"& env_ResultsPath_Server &"\DetailedResults\"& isTest & mdVersion &"\"& regressionScope &"\"& regressionSetName &"\"& Subfolder.ParentFolder.Name &"\Report")) AND NOT (Subfolder.ParentFolder.Name = "Report") Then
+					If NOT (fso.FolderExists("\\"& env_ResultsPath_Server &"\DetailedResults\"& isTest & mdVersion &"\"& regressionScope &"\"& regressionSetName &"\"& Subfolder.ParentFolder.Name)) Then
+						fso.CreateFolder("\\"& env_ResultsPath_Server &"\DetailedResults\"& isTest & mdVersion&"\"& regressionScope &"\"& regressionSetName &"\"& Subfolder.ParentFolder.Name &"\")
+						'msgBox("\\"& env_ResultsPath_Server &"\DetailedResults\"& isTest & mdVersion &"\"& regressionScope &"\"& regressionSetName &"\"& Subfolder.ParentFolder.Name &"\")
+					End If
+					If NOT (fso.FolderExists("\\"& env_ResultsPath_Server &"\DetailedResults\"& isTest & mdVersion &"\"& regressionScope &"\"& regressionSetName &"\"& Subfolder.ParentFolder.Name &"\Report")) Then
+						'msgBox("\\"& env_ResultsPath_Server &"\DetailedResults\"& isTest & mdVersion &"\"& regressionScope &"\"& regressionSetName &"\"& Subfolder.ParentFolder.Name &"\Report")
+						fso.CreateFolder("\\"& env_ResultsPath_Server &"\DetailedResults\"& isTest & mdVersion &"\"& regressionScope &"\"& regressionSetName &"\"& Subfolder.ParentFolder.Name &"\Report\")
+					End If
+				End If
+				'msgBox("Copying from: "& Subfolder.Path & " To "& "\\"& env_ResultsPath_Server &"\DetailedResults\"& isTest & mdVersion &"\"& regressionSetName &"\"& Subfolder.ParentFolder.Name)
+				fso.DeleteFolder "\\"& env_ResultsPath_Server &"\DetailedResults\"& isTest & mdVersion &"\"& regressionScope &"\"& regressionSetName &"\"& Subfolder.ParentFolder.Name
+				fso.CopyFolder Subfolder.Path, "\\"& env_ResultsPath_Server &"\DetailedResults\"& isTest & mdVersion &"\"& regressionScope &"\"& regressionSetName &"\"& Subfolder.ParentFolder.Name
+			End If
+		End If
+		createReportSubFolders Subfolder, isTest, mdVersion
+	Next
+End Function
+
+'**********SOAPUI FUNCTIONS**********
+'Run SoapUI ADD
+Function soapUi_ADD(soapTestSuite, soapTestCase)
+	If fso.FileExists(env_PathVSMap &"SoapUI\SoapResponse\SoapResponse.xml") Then
+		fso.DeleteFile (env_PathVSMap &"SoapUI\SoapResponse\SoapResponse.xml"), True
+	End If
+	WshShell.Run"""" & env_PathSoapUI &"bin\testrunner.bat"" -s"""& soapTestSuite &""" -c"""& soapTestCase &""" -r -PResponsePath="& env_PathVSMap &"SoapUI\SoapResponse\SoapResponse.xml" &" """& env_PathVSMap &"SoapUI\Soap Projects\MDMealZone-soapui-project.xml""",1 , True
+	wait(20)
+	Window("Maitre'D POS").WinObject("POS Screen").Click 124,458
+	wait(20)
+	XMLgetSoap_RefID 'XMLgetSoap_RefID function - gets reference Id from soaplog
+End Function
+
+'Run SoapUI LOCK
+Function soapUi_LOCK()
+	If fso.FileExists(env_PathVSMap &"SoapUI\SoapResponse\SoapResponse.xml") Then
+		fso.DeleteFile (env_PathVSMap &"SoapUI\SoapResponse\SoapResponse.xml"), True
+	End If
+	WshShell.Run"""" & env_PathSoapUI &"bin\testrunner.bat"" -sGeneral -c""Lock Order"" -r -PResponsePath="& env_PathVSMap &"SoapUI\SoapResponse\SoapResponse.xml -PUFTReferenceNumber="& DataTable("soapReferenceNumber", dtGlobalSheet) &" """& env_PathVSMap &"SoapUI\Soap Projects\MDMealZone-soapui-project.xml""",1 , True
+	wait(20)
+	Window("Maitre'D POS").WinObject("POS Screen").Click 124,458
+	wait(20)
+End Function
+
+'Run SoapUI GET
+Function soapUi_GET()
+	If fso.FileExists(env_PathVSMap &"SoapUI\SoapResponse\SoapResponse.xml") Then
+		fso.DeleteFile (env_PathVSMap &"SoapUI\SoapResponse\SoapResponse.xml"), True
+	End If
+	WshShell.Run"""" & env_PathSoapUI &"bin\testrunner.bat"" -sGeneral -c""Get Order"" -r -PResponsePath="& env_PathVSMap &"SoapUI\SoapResponse\SoapResponse.xml -PUFTReferenceNumber="& DataTable("soapReferenceNumber", dtGlobalSheet) &" """& env_PathVSMap &"SoapUI\Soap Projects\MDMealZone-soapui-project.xml""",1 , True
+End Function
+
+'Run SoapUI DELETE
+Function soapUi_VOID()
+	If fso.FileExists(env_PathVSMap &"SoapUI\SoapResponse\SoapResponse.xml") Then
+		fso.DeleteFile (env_PathVSMap &"SoapUI\SoapResponse\SoapResponse.xml"), True
+	End If
+	WshShell.Run"""" & env_PathSoapUI &"bin\testrunner.bat"" -sGeneral -c""Void Order"" -r -PResponsePath="& env_PathVSMap &"SoapUI\SoapResponse\SoapResponse.xml -PUFTReferenceNumber="& DataTable("soapReferenceNumber", dtGlobalSheet) &" """& env_PathVSMap &"SoapUI\Soap Projects\MDMealZone-soapui-project.xml""",1 , True
+	wait(20)
+	Window("Maitre'D POS").WinObject("POS Screen").Click 124,458
+	wait(20)
+End Function
+
+'Run SoapUI MODIFY
+Function soapUi_MODIFY(soapTestSuite, soapTestCase, transIdCount)
+	soapUIString = "-PUFTReferenceNumber="& DataTable("soapReferenceNumber", dtGlobalSheet) &" "
+	For i = 1 To (transIdCount)
+    	transIdTableValue = DataTable.Value("soapTransId"& i, dtGlobalSheet) 
+    	soapUIString = soapUIString &"-PUFTTransactionID"& i &"="& transIdTableValue &" "
+	Next
+	If fso.FileExists(env_PathVSMap &"SoapUI\SoapResponse\SoapResponse.xml") Then
+		fso.DeleteFile (env_PathVSMap &"SoapUI\SoapResponse\SoapResponse.xml"), True
+	End If
+	WshShell.Run"""" & env_PathSoapUI &"bin\testrunner.bat"" -s"""& soapTestSuite &""" -c"""& soapTestCase &""" -r -PResponsePath="& env_PathVSMap &"SoapUI\SoapResponse\SoapResponse.xml "& soapUIString &" """& env_PathVSMap &"SoapUI\Soap Projects\MDMealZone-soapui-project.xml""",1 , True
+	wait(20)
+	Window("Maitre'D POS").WinObject("POS Screen").Click 124,458
+	wait(20)
+End Function
+
+'Find SoapUI order status
+Function getSoapOrderStatus(statusNum)
+	searchForStringInFile env_PathMaitredPrg & "\", "MDmealzoneSoap.log", "<orderStatus>"& statusNum &"</orderStatus>", "OrderStatus"
+End Function
+
+'XML read functions for Soap
+'Get ReferenceId value
+Function XMLgetSoap_RefID()
+	Set xmlDoc = CreateObject("Microsoft.XMLDOM")
+	xmlDoc.Async = False
+	XMLDataFile = env_PathVSMap &"SoapUI\SoapResponse\SoapResponse.xml"
+	XMLNodePath = "/soap:Envelope/soap:Body/AddOrderResponse/AddOrderResult/orderStatusHeader/refNumber"
+	If fso.FileExists(XMLDataFile) Then
+		xmlDoc.Load(XMLDataFile)
+		Set node = xmlDoc.selectSingleNode(XMLNodePath &"/text()")
+		DataTable.Value("soapReferenceNumber", dtGlobalSheet) = node.NodeValue
+	End If
+	Set xmlDoc=nothing
+End Function
+
+'Get TransactionId value
+Function XMLgetSoap_TransactionId(soapClientNumber, MDAltItemNumber, transIdTableNum)
+	Set xmlDoc = CreateObject("Microsoft.XMLDOM")
+	xmlDoc.Async = False
+	XMLDataFile = env_PathVSMap &"SoapUI\SoapResponse\SoapResponse.xml"
+	XMLNodePath = "/soap:Envelope/soap:Body/GetOrderResponse/GetOrderResult/orderArray/Order["& soapClientNumber - 1 &"]/itemArray/Item/transactionId[../altItemId = "& MDAltItemNumber &"]/text()"
+	If fso.FileExists(XMLDataFile) Then
+		xmlDoc.Load(XMLDataFile)
+		Set nodes = xmlDoc.SelectNodes(XMLNodePath)
+		For i = 0 To (nodes.Length - 1)
+	    	Title = nodes(i).NodeValue
+	    	'MsgBox "Transaction ID #" & (i + 1) &": " & Title
+	    	DataTable.Value("soapTransId"& transIdTableNum, dtGlobalSheet) = nodes(i).NodeValue
+		Next
+	End If
+	Set xmlDoc=nothing
+End Function
+
+'Get ModifierTransactionId value
+Function XML_getSoap_ModifierTransactionId(soapClientNumber, soapModififerIndex, transIdTableNum)
+	Set xmlDoc = CreateObject("Microsoft.XMLDOM")
+	xmlDoc.Async = False
+	XMLDataFile = env_PathVSMap &"SoapUI\SoapResponse\SoapResponse.xml"
+	XMLModifierNodePath = "/soap:Envelope/soap:Body/GetOrderResponse/GetOrderResult/orderArray/Order["& soapClientNumber - 1 &"]/itemArray/Item/modifierArray/Modifier/transactionId[../index = "& soapModififerIndex &"]/text()"
+	If fso.FileExists(XMLDataFile) Then
+		xmlDoc.Load(XMLDataFile)
+		Set nodes = xmlDoc.SelectNodes(XMLModifierNodePath)
+		For i = 0 To (nodes.Length - 1)
+	    	Title = nodes(i).NodeValue
+	    	'MsgBox "Modifier Transaction ID #" & (i + 1) &": " & Title
+	    	DataTable.Value("soapTransId"& transIdTableNum, dtGlobalSheet) = nodes(i).NodeValue
+		Next
+	End If
+	Set xmlDoc=nothing
+End Function
+'**********
+
+
+'**********XML FUNCTIONS**********
+Function xml_ReadXmlNode(filePath, nodeToRead)
+	Set xmlDoc = CreateObject("Microsoft.XMLDOM")
+	xmlDoc.Async = "False"
+	xmlDoc.Load(filePath)
+	Set node = xmlDoc.documentElement.selectSingleNode(nodeToRead)
+	xml_ReadXmlNode = node.Text
+End Function
+
+Function xml_ValidateNodeValue(filePath, nodeToRead, valueToValidate, nodeDescriptionForReport)
+	 returnedValue = xml_ReadXmlNode(filePath, nodeToRead)
+	 If returnedValue = valueToValidate Then
+	 	Reporter.ReportEvent micPass, "Validate " & nodeDescriptionForReport & " in XML", valueToValidate & " was found in node " & nodeToRead
+	 	valueFound = true
+	 Else
+	 	Reporter.ReportEvent micFail, "Validate " & nodeDescriptionForReport & " in XML", valueToValidate & " was NOT found in node " & nodeToRead &"! Value " & returnedValue & " was found instead!"
+	 	valueFound = false
+	 End If
+	 xml_ValidateNodeValue = valueFound
+End Function
+
+
+
+'**********
+
+
+'**********SQL FUNCTIONS**********
+Function SQLQuery(SQLServer, SQLDatabase, query)
+	Dim objConnection 
+	'Set Adodb Connection Object
+	Set objConnection = CreateObject("ADODB.Connection")     
+	Dim objRecordSet 
+	'Create RecordSet Object
+	Set objRecordSet = CreateObject("ADODB.Recordset")     
+	Dim DBQuery 'Query to be Executed
+	DBQuery = query
+	'Connecting using SQL OLEDB Driver
+	objConnection.Open "Driver={SQL Server};Server="& SQLServer &";Database="& SQLDatabase &";Trusted_Connection=yes;"
+	'Execute the Query
+	objRecordSet.Open DBQuery,objConnection
+	' Release the Resources
+	Set objConnection = Nothing
+	Set objRecordSet = Nothing
+End Function
+
+Function SQLQueryUserPass(SQLServer, SQLDatabase, SQLUser, SQLPass, query)
+	Dim objConnection 
+	'Set Adodb Connection Object
+	Set objConnection = CreateObject("ADODB.Connection")     
+	Dim objRecordSet 
+	'Create RecordSet Object
+	Set objRecordSet = CreateObject("ADODB.Recordset")
+	Dim DBQuery 'Query to be Executed
+	DBQuery = query
+	'Connecting using SQL OLEDB Driver
+	objConnection.Open "Driver={SQL Server};Server="& SQLServer &";Database="& SQLDatabase &";user id= '"& SQLUser & "';password='"& SQLPass &"';"
+	'Execute the Query
+	objRecordSet.Open DBQuery,objConnection
+	' Release the Resources
+	Set objConnection = Nothing
+	Set objRecordSet = Nothing
+End Function
+
+
+'**********FILE READ FUNCTIONS**********
+'Search in file for string
+Function searchForStringInFile(textFilePath, textFileName, stringToFind, checkPointName)
+	If NOT fso.FileExists(textFilePath & textFileName) Then
+		wait(5)
+	End If
+	If fso.FileExists(textFilePath & textFileName) Then
+		Const ForReading = 1
+		wshShell.Run """" & env_PathVSMap & "Batch-Apps\Clean Special Chars From File.exe""" & " """ & textFilePath & textFileName & """", 0, TRUE
+		Set objRegEx = CreateObject("VBScript.RegExp")
+		objRegEx.Pattern = stringToFind
+		
+		Set objFile = fso.OpenTextFile(textFilePath & textFileName, ForReading)
+		DataTable.GetSheet(dtGlobalSheet).AddParameter checkPointName, ""
+		Do Until objFile.AtEndOfStream
+		    strSearchString = objFile.ReadLine
+		    Set colMatches = objRegEx.Execute(strSearchString)
+		    If colMatches.Count > 0 Then
+				DataTable.Value (checkPointName, dtGlobalSheet) = "found"
+			End If
+		Loop
+		If NOT DataTable.Value (checkPointName, dtGlobalSheet) = "found" Then
+			wait(10)
+			Do Until objFile.AtEndOfStream
+			    strSearchString = objFile.ReadLine
+			    Set colMatches = objRegEx.Execute(strSearchString)
+			    If colMatches.Count > 0 Then
+					DataTable.Value (checkPointName, dtGlobalSheet) = "found"
+				End If
+			Loop
+		End If
+		objFile.Close
+		If DataTable.Value (checkPointName, dtGlobalSheet) = "found" Then
+			Reporter.ReportEvent micPass, textFilePath & textFileName &" contains "& stringToFind, checkPointName
+		Else
+			Reporter.ReportEvent micFail, textFilePath & textFileName &" DOES NOT contain "& stringToFind, checkPointName
+		End If
+	Else
+		Reporter.ReportEvent micFail, textFilePath & textFileName &" NOT FOUND!!", checkPointName
+	End If
+End Function
+
+'Search in file for string and replace
+Function searchForStringInFileReplace(fullFilePath, stringToFind, stringToReplace)
+	'Does file exist?
+	if NOT fso.FileExists(fullFilePath) then
+		Reporter.ReportEvent micFail, fullFilePath &" NOT FOUND!!", ""
+		Exit Function
+	end if
+	 
+	'Read file
+	set objFile=fso.OpenTextFile(fullFilePath,1)
+	oldContent=objFile.ReadAll
+	 
+	'Write file
+	newContent=replace(oldContent,stringToFind,stringToReplace,1,-1,0)
+	set objFile=fso.OpenTextFile(fullFilePath,2)
+	objFile.Write newContent
+	objFile.Close 	
+End Function
+'**********
+
+
+'**********FILE SYSTEM FUNCTIONS**********
+'Delete WSPrint content
+Function clearAllMaitredFiles()
+	On Error Resume Next
+	If fso.FolderExists(env_PathMaitredData & "\WSPRINT") Then
+		fso.DeleteFile (env_PathMaitredData & "\WSPRINT\*.*"), True
+	End If
+	If fso.FolderExists(env_PathMaitredData & "\WSPRINT\InvoiceViewer") Then
+		fso.DeleteFile (env_PathMaitredData & "\WSPRINT\InvoiceViewer\*.*"), True
+	End If
+	If fso.FileExists(env_PathMaitredPrg &"\Prg\MDMealZoneSOAP.log") Then
+		fso.DeleteFile (env_PathMaitredPrg &"\Prg\MDMealZoneSOAP.log"), True
+	End If
+	clearEftFolders
+	On Error GOTO 0
+End Function
+
+Function copyPrintJobs()
+	set objFolder = fso.GetFolder(env_PathMaitredData & "\WSPRINT")
+	lastFileCount = 0
+	
+	'Make sure all print jobs have been created
+	Do While printJobsComplete = FALSE
+		fileCount = 0
+		For each file in objFolder.Files
+			fileCount = fileCount + 1
+		Next
+		If fileCount > lastFileCount Then
+			lastFileCount = fileCount
+			wait(2)
+		Else
+			printJobsComplete = TRUE
+		End If
+	Loop
+	
+	'Move print jobs so invoice viewer displays them
+	If fso.FolderExists(env_PathMaitredData & "\WSPRINT\InvoiceViewer") Then
+		fso.MoveFile env_PathMaitredData & "\WSPRINT\*.010",env_PathMaitredData & "\WSPRINT\InvoiceViewer\"
+	End If
+End Function
+
+'Create all needed folders
+Function createFolderStructure()
+	On Error Resume Next
+	If NOT fso.FolderExists(env_PathVSMap &"SoapUI\SoapResponse") Then
+		fso.CreateFolder(env_PathVSMap &"SoapUI\SoapResponse\")
+	End If
+	If NOT fso.FolderExists(env_PathMaitredData & "\WSPRINT\InvoiceViewer") Then
+		fso.CreateFolder (env_PathMaitredData & "\WSPRINT\InvoiceViewer\")
+	End If
+	On Error Goto 0
+End Function
+
+'Clear Log Folder 
+Function clearLogFolder()
+	WshShell.Run """" & env_PathVSMap &"Batch-Apps\KillAll.bat""", 1, true
+	waitForProcessToClose "bosrv.exe", 30
+	waitForProcessToClose "POS.EXE", 30
+	On Error Resume Next
+	If fso.FolderExists (env_PathMaitredData & "\LOG\") Then
+		fso.DeleteFolder (env_PathMaitredData & "\LOG"), True
+	End If
+	If fso.FolderExists (env_PathMaitredData & "\LOG\") Then
+		Reporter.ReportEvent micFail, "clearLogFile", "Log folder Not Cleared"
+		fso.DeleteFolder (env_PathMaitredData & "\LOG"), True
+	Else
+		Reporter.ReportEvent micPass, "clearLogFile", "Log folder Cleared"
+	End If
+	On Error Goto 0
+	loadBosrvPos
+End Function
+
+Function clearOperaLog()
+	WshShell.Run """" & env_PathVSMap &"Batch-Apps\KillAll.bat""", 1, true
+	waitForProcessToClose "bosrv.exe", 30
+	waitForProcessToClose "POS.EXE", 30
+	On Error Resume Next
+	If fso.FileExists (env_PathMaitredData & "\LOG\Opera.log") Then
+		fso.DeleteFile (env_PathMaitredData & "\LOG\Opera.log"), True
+	End If
+	If fso.FileExists (env_PathMaitredData & "\LOG\Opera.log") Then
+		Reporter.ReportEvent micFail, "clearLogFile", "Log File Not Cleared"
+		fso.DeleteFile (env_PathMaitredData & "\LOG\Opera.log"), True
+	Else
+		Reporter.ReportEvent micPass, "clearLogFile", "Log File Cleared"
+	End If
+	On Error GOTO 0
+	loadBosrvPos
+End Function
+
+Function clearMicrosIPLog()
+	WshShell.Run """" & env_PathVSMap &"Batch-Apps\KillAll.bat""", 1, true
+	waitForProcessToClose "bosrv.exe", 30
+	waitForProcessToClose "POS.EXE", 30
+	On Error Resume Next
+	If fso.FileExists (env_PathMaitredData & "\LOG\MicrosIP.log") Then
+		fso.DeleteFile (env_PathMaitredData & "\LOG\MicrosIP.log"), True
+	End If
+	If fso.FileExists (env_PathMaitredData & "\LOG\MicrosIP.log") Then
+		Reporter.ReportEvent micFail, "clearLogFile", "Log File Not Cleared"
+		fso.DeleteFile (env_PathMaitredData & "\LOG\MicrosIP.log"), True
+	Else
+		Reporter.ReportEvent micPass, "clearLogFile", "Log File Cleared"
+	End If
+	On Error GOTO 0
+	loadBosrvPos
+End Function
+
+Function clearEftFolders()
+	'wait(2)
+	On Error Resume Next
+	If fso.FolderExists(env_PathMaitredData & "\INT") Then
+		fso.DeleteFile (env_PathMaitredData & "\INT\*.*"), True
+	End If
+	If fso.FolderExists(env_PathMaitredData & "\INT\Backup") Then
+		fso.DeleteFile (env_PathMaitredData & "\INT\Backup\*.*"), True
+	End If
+	On Error GOTO 0
+End Function
+'**********
+
+'**********BACK OFFICE FUNCTIONS**********
+'Load Account receivable
+Function loadBoAr(xCode)
+	killProcess "boar.exe"
+	If xCode = "" Then
+		WshShell.Run env_PathMaitredPrg &"\" + "boar.exe /f" + env_PathMaitredData &"\bo.ini /al0", 0, false
+	Else
+		WshShell.Run env_PathMaitredPrg &"\" + "boar.exe /f" + env_PathMaitredData &"\bo.ini /x"& xCode &" /ac256 /al0", 0, false
+	End If
+End Function
+'Load System Configuration
+Function loadBoCnfg(xCode)
+	killProcess "bocnfg.exe"
+	If xCode = "" Then
+		WshShell.Run env_PathMaitredPrg &"\" + "bocnfg.exe /f" + env_PathMaitredData &"\bo.ini /al0", 0, false
+	Else
+		WshShell.Run env_PathMaitredPrg &"\" + "bocnfg.exe /f" + env_PathMaitredData &"\bo.ini /x"& xCode &" /ac256 /al0", 0, false
+	End If
+End Function
+'Load Delivery
+Function loadBoDeliv(xCode)
+	killProcess "bodeliv.exe"
+	If xCode = "" Then
+		WshShell.Run env_PathMaitredPrg &"\" + "bodeliv.exe /f" + env_PathMaitredData &"\bo.ini /al0", 0, false
+	Else
+		WshShell.Run env_PathMaitredPrg &"\" + "bodeliv.exe /f" + env_PathMaitredData &"\bo.ini /x"& xCode &" /ac256 /al0", 0, false
+	End If
+End Function
+'Load EFT
+Function loadBoEft(xCode)
+	killProcess "boeft.exe"
+	If xCode = "" Then
+		WshShell.Run env_PathMaitredPrg &"\" + "boeft.exe /f" + env_PathMaitredData &"\bo.ini /al0", 0, false
+	Else
+		WshShell.Run env_PathMaitredPrg &"\" + "boeft.exe /f" + env_PathMaitredData &"\bo.ini /x"& xCode &" /ac256 /al0", 0, false
+	End If
+End Function
+'Load Accounting Interface
+Function loadBoGl(xCode)
+	killProcess "bogl.exe"
+	If xCode = "" Then
+		WshShell.Run env_PathMaitredPrg &"\" + "bogl.exe /f" + env_PathMaitredData &"\bo.ini /al0", 0, false
+	Else
+		WshShell.Run env_PathMaitredPrg &"\" + "bogl.exe /f" + env_PathMaitredData &"\bo.ini /x"& xCode &" /ac256 /al0", 0, false
+	End If
+End Function
+'Load Inventory
+Function loadBoInv(xCode)
+	killProcess "boinv.exe"
+	If xCode = "" Then
+		WshShell.Run env_PathMaitredPrg &"\" + "boinv.exe /f" + env_PathMaitredData &"\bo.ini /al0", 0, false
+	Else
+		WshShell.Run env_PathMaitredPrg &"\" + "boinv.exe /f" + env_PathMaitredData &"\bo.ini /x"& xCode &" /ac256 /al0", 0, false
+	End If
+End Function
+'Load POS Control
+Function loadBoPos(xCode)
+	killProcess "bopos.exe"
+	If xCode = "" Then
+		WshShell.Run env_PathMaitredPrg &"\" + "bopos.exe /f" + env_PathMaitredData &"\bo.ini /al0", 0, false
+	Else
+		WshShell.Run env_PathMaitredPrg &"\" + "bopos.exe /f" + env_PathMaitredData &"\bo.ini /x"& xCode &" /ac256 /al0", 0, false
+	End If
+End Function
+'Load Time and Attendance
+Function loadBoTa(xCode)
+	killProcess "bota.exe"
+	If xCode = "" Then
+		WshShell.Run env_PathMaitredPrg &"\" + "bota.exe /f" + env_PathMaitredData &"\bo.ini /al0", 0, false
+	Else
+		WshShell.Run env_PathMaitredPrg &"\" + "bota.exe /f" + env_PathMaitredData &"\bo.ini /x"& xCode &" /ac256 /al0", 0, false
+	End If
+End Function
+'Load Converter
+Function loadConverter(xCode)
+	killProcess "converter.exe"
+	If xCode = "" Then
+		WshShell.Run env_PathMaitredPrg &"\" + "converter.exe /f" + env_PathMaitredData &"\bo.ini /al0", 0, false
+	Else
+		WshShell.Run env_PathMaitredPrg &"\" + "converter.exe /f" + env_PathMaitredData &"\bo.ini /x"& xCode &" /ac256 /al0", 0, false
+	End If
+End Function
+'Load Server Manager
+Function loadSrvMan(xCode)
+	killProcess "srvman.exe"
+	If xCode = "" Then
+		WshShell.Run env_PathMaitredPrg &"\" + "srvman.exe /f" + env_PathMaitredData &"\bo.ini /al0", 0, false
+	Else
+		WshShell.Run env_PathMaitredPrg &"\" + "srvman.exe /f" + env_PathMaitredData &"\bo.ini /x"& xCode &" /ac256 /al0", 0, false
+	End If
+End Function
+'Load MultiUnit BO
+Function loadBoMult
+	killProcess "BoMult.exe"
+	WshShell.Run env_PathMaitredPrg &"\" + "BoMult.exe /f" + env_PathMaitredData &"\bo.ini /al0", 0, false
+End Function
+'Load Broadcaster
+Function loadBroadcaster
+	killProcess "Broadcaster.exe"
+	WshShell.Run env_PathMaitredPrg &"\" + "Broadcaster.exe /f" + env_PathMaitredData &"\bo.ini /al0", 0, false
+End Function
+
+'Load BOSRV and POS
+'-------------			Start BOSrv.exe				-------------'
+Function loadBosrv
+	'Start Bosrv
+	WshShell.Run env_PathMaitredPrg &"\" + "bosrv.exe /f"+ env_PathMaitredData &"\bo.ini", 0, false
+	searchForProcess ".", "bosrv.exe", 120
+	searchForProcess ".", "bosrveft.exe", 120
+End Function
+
+Function loadBosrvPos
+	killProcess "POS.EXE"
+	'Start Bosrv
+	WshShell.Run env_PathMaitredPrg &"\" + "bosrv.exe /f"+ env_PathMaitredData &"\bo.ini", 0, false
+	searchForProcess ".", "bosrv.exe", 120
+	searchForProcess ".", "bosrveft.exe", 120
+	'Start Starter.exe
+	WShShell.CurrentDirectory = env_PathMaitredPOS & env_MainMaitredPOS
+	WshShell.Run "Starter.exe", 1, false
+	wait(10)
+	searchForProcess ".", "POS.EXE", 120
+	If htmlPos then
+		htmlPos_Connect
+	End If
+	resizeApps
+	pos_AtServerSelection
+End Function
+
+Function loadPOS(POS)
+	Select Case POS
+	 Case "WS02"
+		WShShell.CurrentDirectory = env_PathMaitredPOS & env_SecondMaitredPOS
+	       WshShell.Run "Starter.exe", 1, false
+	  Case "WS03"
+		WShShell.CurrentDirectory = env_PathMaitredPOS & env_ThirdMaitredPOS
+	       WshShell.Run "Starter.exe", 1, false
+	End Select
+	   wait(10)
+	   resizeApps
+End Function
+
+
+'**********REPORT FUNCTIONS**********
+'Load a specific MDR file
+Function loadBoReportMdr(mdrFile)
+	killProcess "BOReport.exe"
+	If fso.FolderExists(env_PathMaitredData &"\DBF") Then
+		fso.DeleteFile(env_PathMaitredData &"\DBF\*.*"), True
+	End If
+	If fso.FolderExists("C:\ReportExports") Then
+		fso.DeleteFile("C:\ReportExports\*.*"), True
+	Else
+		fso.CreateFolder("C:\ReportExports")
+	End If
+	WshShell.Run env_PathMaitredPrg &"\" + "BOReport.exe "& env_PathVSMap & "Batch-Apps\Reports\MD7-ReportMDRs\"& mdrFile &" /f" + env_PathMaitredData &"\bo.ini " &" /ac256 /al0", 0, True
+End Function
+'Import a DBF into a UFT Datatable
+Function DBF_import(dbfFile)
+	killProcess "soffice.exe"
+	killProcess "soffice.bin"
+	programFiles = wshShell.ExpandEnvironmentStrings("%ProgramW6432%")
+	If NOT fso.FolderExists(programFiles) Then
+		programFiles = wshShell.ExpandEnvironmentStrings("%PROGRAMFILES%")
+	End If
+	If fso.FolderExists(env_PathVSMap & "\Batch-Apps\Reports\DbfExport") Then
+		fso.DeleteFile(env_PathVSMap & "\Batch-Apps\Reports\DbfExport\*.*"), True
+	Else
+		fso.CreateFolder(env_PathVSMap & "\Batch-Apps\Reports\DbfExport")
+	End If
+	WshShell.Run """"& programFiles & "\LibreOffice\program\soffice.exe"" -convert-to txt:""Text - txt - csv (StarCalc)"":9,34,0,1,1 "& env_PathMaitredData &"\DBF\"& dbfFile &" -outdir "& env_PathVSMap & "Batch-Apps\Reports\DbfExport", 0, True
+	exportedDbfFile = Replace(dbfFile, ".dbf", ".txt", 1, -1, vbTextCompare)
+	DataTable.AddSheet(dbfFile)
+	If fso.FileExists(env_PathVSMap & "\Batch-Apps\Reports\DbfExport\"& exportedDbfFile) Then
+		DataTable.ImportSheet env_PathVSMap & "\Batch-Apps\Reports\DbfExport\"& exportedDbfFile,1 , dbfFile
+	End If
+End Function
+'Check the value of a Col/Row contained in an imported DBF - From the last row
+Function DBF_checkValueFromLastRow(dbfFile, columnName, rowVal, valToSearch, equalNotEqual)
+	datatableRowCount = DataTable.GetSheet(dbfFile).GetRowCount
+	cellValue = DataTable.GetSheet(dbfFile).GetParameter(columnName).ValueByRow(datatableRowCount - rowVal)
+	If equalNotEqual = TRUE Then
+		If cellValue = valToSearch Then
+			Reporter.ReportEvent micPass, "(Col, Row)("& columnName &", "& datatableRowCount - rowVal &") in DBF "& dbfFile &" contains value """& valToSearch &"", "Search for value in DBF"
+		Else
+			Reporter.ReportEvent micFail, "(Col, Row)("& columnName &", "& datatableRowCount - rowVal &") in DBF "& dbfFile &" contains value """& cellValue &""" which IS NOT the value expected """& valToSearch &"", "Search for value in DBF"
+		End If
+	Else
+		If NOT cellValue = valToSearch Then
+			Reporter.ReportEvent micPass, "(Col, Row)("& columnName &", "& datatableRowCount - rowVal &") in DBF "& dbfFile &" does not contain value """& valToSearch &"", "Search for value in DBF"
+		Else
+			Reporter.ReportEvent micFail, "(Col, Row)("& columnName &", "& datatableRowCount - rowVal &") in DBF "& dbfFile &" CONTAINS value """& valToSearch &""" when it SHOULD NOT", "Search for value in DBF"
+		End If
+	End If
+End Function
+
+
+'**********EFT FUNCTIONS**********
+'Import field from \ws#\Emp_Log.log
+Function EFT_readFromEmpLog(xmlNode, dataTableName)
+	Const ForReading = 1
+	Const ForWriting = 2
+	emplogFilePath = env_PathMaitredPOS &"EPM_LOG.LOG"
+	xmlFilePath = env_PathMaitredPOS &"EPM_LOG.XML"
+	
+	'Load EMP_LOG.LOG file from WS folder, add XML tag, remove unecessary text, number TStream/RStream nodes and save as EMP_LOG.XML
+	If fso.FileExists(xmlFilePath) Then
+		fso.DeleteFile xmlFilePath, True
+	End If
+	If fso.FileExists(emplogFilePath) Then
+		Set objFile = fso.OpenTextFile(emplogFilePath, ForReading)
+		tStreamNodeCount = 0
+		rStreamNodeCount = 0
+		strNewContents = "<?xml version=""1.0""?>" & vbCrLf & "<EpmLog>" & vbCrLf					'Add XML tag
+		Do Until objFile.AtEndOfStream																'Load EMP_LOG.LOG file from WS folder
+			strLine = objFile.ReadLine
+			If InStr(strLine, "<TStream>") > 0 Then
+				tStreamNodeCount = tStreamNodeCount + 1
+				strNewContents = strNewContents & "<TStream" & tStreamNodeCount & ">" & vbCrLf		'Number TStream nodes
+			ElseIf InStr(strLine, "</TStream>") > 0 Then
+				strNewContents = strNewContents & "</TStream" & tStreamNodeCount & ">" & vbCrLf		'Number /TStream nodes
+			ElseIf InStr(strLine, "<RStream>") > 0 Then
+				rStreamNodeCount = rStreamNodeCount + 1
+				strNewContents = strNewContents & "<RStream" & rStreamNodeCount & ">" & vbCrLf		'Number RStream nodes
+			ElseIf InStr(strLine, "</RStream>") > 0 Then
+				strNewContents = strNewContents & "</RStream" & rStreamNodeCount & ">" & vbCrLf		'Number /RStream nodes
+			ElseIf InStr(strLine, "<?xml version=""1.0""?>") > 0  Then
+				strNewContents = strNewContents														'remove unecessary text
+			ElseIf InStr(strLine, "<") > 0 Then
+				strNewContents = strNewContents & strLine & vbCrLf									'remove unecessary text
+			End If
+		Loop
+		strNewContents = strNewContents & "</EpmLog>"												'Add closing XML tag
+		objFile.Close
+		fso.CreateTextFile(xmlFilePath)																'Create EMP_LOG.XML
+		Set objFile = fso.OpenTextFile(xmlFilePath, ForWriting)
+		objFile.Write strNewContents																'Save as EMP_LOG.XML
+		objFile.Close
+	End If
+		
+	'Read XML file, locate node and put value in datatable
+	Set xmlDoc = CreateObject("Microsoft.XMLDOM")
+	xmlDoc.Async = False
+	If fso.FileExists(xmlFilePath) Then
+		xmlDoc.Load(xmlFilePath) 															'Read XML file
+		Set nodes = xmlDoc.SelectNodes(xmlNode)
+		For Each objNode in nodes															'Locate node
+			DataTable.GetSheet(dtGlobalSheet).AddParameter dataTableName, objNode.text		'Put node value in UFT datatable
+			'msgBox objNode.nodeName & ": " & objNode.text
+		Next
+	End If
+	Set xmlDoc = NOTHING
+End Function
+
+'Validate dsiClientX GiftCard
+Function eft_dsiClientX_ValidateGc(errorCode, service, folio, amount, merchantId, workstation, waiter, balance)
+	For Each oFile In fso.GetFolder(env_PathMaitredData & "\INT\BACKUP").Files
+		If inStr(1, ofile, "AGIF") Then
+			If fso.FileExists(ofile.Path) Then
+				gcActivated = xml_ValidateNodeValue(ofile.Path, "ErrorCode", errorCode, "ErrorCode Node Value")
+				If gcActivated Then
+					xml_ValidateNodeValue ofile.Path, "Service", service, "Service Node Value"
+					xml_ValidateNodeValue ofile.Path, "Folio", folio, "Folio Node Value"
+					xml_ValidateNodeValue ofile.Path, "Amount", amount, "Amount Node Value"
+					xml_ValidateNodeValue ofile.Path, "MerchantId", merchantId, "MerchantId Node Value"
+					xml_ValidateNodeValue ofile.Path, "Workstation", workstation, "Workstation Node Value"
+					xml_ValidateNodeValue ofile.Path, "Waiter", waiter, "Waiter Node Value"
+					If NOT balance = "NA" Then
+						xml_ValidateNodeValue ofile.Path, "Balance", balance, "Balance Node Value"
+					End If
+					eft_dsiClientX_ValidateGc = xml_ReadXmlNode(ofile.Path, "GCReference")
+					'Save Authorisation number to system environment variable.
+					Set userEnvironmentVariable = wshShell.Environment("USER")
+					If xml_ReadXmlNode(ofile.Path, "Service") = "Activate" Then
+						userEnvironmentVariable("lastGiftCardActivation_GCReference") = xml_ReadXmlNode(ofile.Path, "GCReference")
+						userEnvironmentVariable("lastGiftCardActivation_Amount") = xml_ReadXmlNode(ofile.Path, "Amount")
+					End If
+					If xml_ReadXmlNode(ofile.Path, "Service") = "Increment" Then
+						userEnvironmentVariable("lastGiftCardIncrement_GCReference") = xml_ReadXmlNode(ofile.Path, "GCReference")
+						userEnvironmentVariable("lastGiftCardIncrement_Amount") = xml_ReadXmlNode(ofile.Path, "Amount")
+					End If
+					If xml_ReadXmlNode(ofile.Path, "Service") = "Redemption" Then
+						userEnvironmentVariable("lastGiftCardRedemption_GCReference") = xml_ReadXmlNode(ofile.Path, "GCReference")
+						userEnvironmentVariable("lastGiftCardRedemption_Amount") = xml_ReadXmlNode(ofile.Path, "Amount")
+					End If
+					If xml_ReadXmlNode(ofile.Path, "Service") = "Balance" Then
+						userEnvironmentVariable("lastGiftCardBalance_Amount") = xml_ReadXmlNode(ofile.Path, "Balance")
+					End If
+				Else
+					Reporter.ReportEvent micFail, "Gift Card Activation - Critical Error", "GiftCard Activation Failed!"
+					eft_dsiClientX_ValidateGc = "Failed"
+				End If
+			End If
+			gcAnswerFound = TRUE
+		End If
+	Next
+	If gcAnswerFound = FALSE Then
+		Reporter.ReportEvent micFail, "Gift Card Activation - Critical Error", "Gift card answer file not found in " & env_PathMaitredData & "\INT\BACKUP !"
+	End If
+End Function
+
+'Validate Givex GiftCard
+Function eft_givex_ValidateGc(errorCode, service, folio, amount, merchantId, workstation, waiter, balance)
+	For Each oFile In fso.GetFolder(env_PathMaitredData & "\INT\BACKUP").Files
+		If inStr(1, ofile, "AGIF") Then
+			If fso.FileExists(ofile.Path) Then
+				gcActivated = xml_ValidateNodeValue(ofile.Path, "ErrorCode", errorCode, "ErrorCode Node Value")
+				If gcActivated Then
+					xml_ValidateNodeValue ofile.Path, "Service", service, "Service Node Value"
+					xml_ValidateNodeValue ofile.Path, "Folio", folio, "Folio Node Value"
+					xml_ValidateNodeValue ofile.Path, "Amount", amount, "Amount Node Value"
+					xml_ValidateNodeValue ofile.Path, "MerchantId", merchantId, "MerchantId Node Value"
+					xml_ValidateNodeValue ofile.Path, "Workstation", workstation, "Workstation Node Value"
+					xml_ValidateNodeValue ofile.Path, "Waiter", waiter, "Waiter Node Value"
+					If NOT balance = "NA" Then
+						xml_ValidateNodeValue ofile.Path, "Balance", balance, "Balance Node Value"
+					End If
+					eft_givex_ValidateGc = xml_ReadXmlNode(ofile.Path, "GCReference")
+					'Save Authorisation number to system environment variable.
+					Set userEnvironmentVariable = wshShell.Environment("USER")
+					If xml_ReadXmlNode(ofile.Path, "Service") = "Activate" Then
+						userEnvironmentVariable("lastGivexGiftCardActivation_GCReference") = xml_ReadXmlNode(ofile.Path, "GCReference")
+						userEnvironmentVariable("lastGivexGiftCardActivation_Amount") = xml_ReadXmlNode(ofile.Path, "Amount")
+					End If
+					If xml_ReadXmlNode(ofile.Path, "Service") = "Increment" Then
+						userEnvironmentVariable("lastGivexGiftCardIncrement_GCReference") = xml_ReadXmlNode(ofile.Path, "GCReference")
+						userEnvironmentVariable("lastGivexGiftCardIncrement_Amount") = xml_ReadXmlNode(ofile.Path, "Amount")
+					End If
+					If xml_ReadXmlNode(ofile.Path, "Service") = "Redemption" Then
+						userEnvironmentVariable("lastGivexGiftCardRedemption_GCReference") = xml_ReadXmlNode(ofile.Path, "GCReference")
+						userEnvironmentVariable("lastGivexGiftCardRedemption_Amount") = xml_ReadXmlNode(ofile.Path, "Amount")
+					End If
+					If xml_ReadXmlNode(ofile.Path, "Service") = "Balance" Then
+						userEnvironmentVariable("lastGivexGiftCardBalance_Amount") = xml_ReadXmlNode(ofile.Path, "Balance")
+					End If
+				Else
+					Reporter.ReportEvent micFail, "Givex Gift Card Activation - Critical Error", "Givex GiftCard Activation Failed!"
+					eft_givex_ValidateGc = "Failed"
+				End If
+			End If
+			gcAnswerFound = TRUE
+		End If
+	Next
+	If gcAnswerFound = FALSE Then
+		Reporter.ReportEvent micFail, "Givex Gift Card Activation - Critical Error", "Givex Gift card answer file not found in " & env_PathMaitredData & "\INT\BACKUP !"
+	End If
+End Function
+
+
+'**********HOTEL INTERFACE FUNCTIONS**********
+Function hotel_readMicrosLog(interfaceName, modeAsSubRev)
+    wait(2)
+	microsLogPath = env_PathMaitredData & "\Log\" & interfaceName & ".log"
+	If NOT fso.FileExists(microsLogPath) Then
+		wait(5)
+	End If
+	If NOT fso.FileExists(microsLogPath) Then
+		Reporter.ReportEvent micFail, "Cannot find Micros log file", "Could not find " & microsLogPath
+		Exit Function
+	End If
+	Const ForReading = 1
+	Set objRegEx = CreateObject("VBScript.RegExp")
+	objRegEx.Pattern = stringToFind
+	Set objFile = fso.OpenTextFile(microsLogPath, ForReading)
+	Do Until objFile.AtEndOfStream
+	    Redim Preserve arrLogLines(i)
+	    arrLogLines(i) = objFile.ReadLine
+	    i = i + 1
+	Loop
+	objFile.Close
+	For l = Ubound(arrLogLines) To Lbound(arrLogLines) Step -1
+		If InStr(arrLogLines(l), "S(225)") > 0 Then
+			hotelDataValue = arrLogLines(l)
+			Exit For
+		End If
+	Next
+	If interfaceName = "MicrosIP" Then
+		addValueToNewColumn "HotelInterface", "GuestName", 2, Mid(hotelDataValue, 72, 16)
+		addValueToNewColumn "HotelInterface", "GuestID", 2, Mid(hotelDataValue, 88, 1)
+		addValueToNewColumn "HotelInterface", "TransactionEmployeeNum", 2, Mid(hotelDataValue, 89, 4)
+		addValueToNewColumn "HotelInterface", "CheckEmployeeNum", 2, Mid(hotelDataValue, 93, 4)
+		addValueToNewColumn "HotelInterface", "RevenueCenter", 2, Mid(hotelDataValue, 99, 1)
+		'addValueToNewColumn "HotelInterface", "CheckNumber", 2, Mid(hotelDataValue, 103, 4)
+		If modeAsSubRev Then
+			addValueToNewColumn "HotelInterface", "TransactionNumber", 2, Mid(hotelDataValue, 110, 1)
+		End If
+		addValueToNewColumn "HotelInterface", "Covers", 2, Mid(hotelDataValue, 114, 1)
+		addValueToNewColumn "HotelInterface", "CurrentPaymentAmnt", 2, Mid(hotelDataValue, 118, 10)
+		addValueToNewColumn "HotelInterface", "Sales1Total", 2, Mid(hotelDataValue, 128, 10)
+		addValueToNewColumn "HotelInterface", "Sales2Total", 2, Mid(hotelDataValue, 138, 10)
+		addValueToNewColumn "HotelInterface", "Sales3Total", 2, Mid(hotelDataValue, 148, 10)
+		addValueToNewColumn "HotelInterface", "Sales4Total", 2, Mid(hotelDataValue, 158, 10)
+		addValueToNewColumn "HotelInterface", "DiscountTotal", 2, Mid(hotelDataValue, 168, 10)
+		addValueToNewColumn "HotelInterface", "ServiceChargeTotalManual", 2, Mid(hotelDataValue, 178, 10)
+		addValueToNewColumn "HotelInterface", "ServiceChargeTotalAuto", 2, Mid(hotelDataValue, 188, 10)
+		addValueToNewColumn "HotelInterface", "Tax1Total", 2, Mid(hotelDataValue, 198, 10)
+		addValueToNewColumn "HotelInterface", "Tax2Total", 2, Mid(hotelDataValue, 208, 10)
+		addValueToNewColumn "HotelInterface", "Tax3Total", 2, Mid(hotelDataValue, 218, 10)
+		addValueToNewColumn "HotelInterface", "Tax4Total", 2, Mid(hotelDataValue, 228, 10)
+		addValueToNewColumn "HotelInterface", "PreviousPaymentAmount", 2, Mid(hotelDataValue, 238, 10)
+	End If
+End Function
+
+Function hotel_readOperaLog(sheetName)
+	logPath = env_PathMaitredData & "\Log\Opera.log"
+	tempLogPath = env_PathMaitredData & "\Log\OperaTemp.log"
+	If NOT fso.FileExists(logPath) Then
+		wait(5)
+	End If
+	If NOT fso.FileExists(logPath) Then
+		Reporter.ReportEvent micFail, "Cannot find Opera log file", "Could not find " & logPath
+		Exit Function
+	End If
+	fso.CopyFile logPath, tempLogPath, TRUE
+	Const ForReading = 1
+	Set objRegEx = CreateObject("VBScript.RegExp")
+	objRegEx.Pattern = stringToFind
+	
+	Set objFile = fso.OpenTextFile(tempLogPath, ForReading)
+	Do Until objFile.AtEndOfStream
+	    Redim Preserve arrLogLines(i)
+	    arrLogLines(i) = objFile.ReadLine
+	    i = i + 1
+	Loop
+	objFile.Close
+	For l = Ubound(arrLogLines) To Lbound(arrLogLines) Step -1
+		If InStr(arrLogLines(l), "<PostRequest") > 0 Then
+			hotelDataValue = arrLogLines(l)
+			Exit For
+		End If
+	Next
+	operaContainerArr = Array("RoomNumber", "ReservationId", "ProfileId", "LastName", "HotelId", "RequestType", "MatchFromPostList", "InquiryInformation", "RevenueCenter", "Covers", "TotalAmount", "WaiterId", "WorkstationId", _
+	"Subtotal1", "Subtotal2", "Subtotal3", "Subtotal4", "Subtotal5", "Subtotal6", "Subtotal7", "Subtotal8", "Subtotal9", "Subtotal10", "Subtotal11", "Subtotal12", "Subtotal13", "Subtotal14", "Subtotal15", "Subtotal16", _
+	"Discount1", "Discount2", "Discount3", "Discount4", "Discount5", "Discount6", "Discount7", "Discount8", "Discount9", "Discount10", "Discount11", "Discount12", "Discount13", "Discount14", "Discount15", "Discount16", _
+	"Tax1", "Tax2", "Tax3", "Tax4", "Tax5", "Tax6", "Tax7", "Tax8", "Tax9", "Tax10", "Tax11", "Tax12", "Tax13", "Tax14", "Tax15", "Tax16", _
+	"ServiceCharge1", "ServiceCharge2", "ServiceCharge3", "ServiceCharge4", "ServiceCharge5", "ServiceCharge6", "ServiceCharge7", "ServiceCharge8", "ServiceCharge9", "ServiceCharge10", "ServiceCharge11", "ServiceCharge12", "ServiceCharge13", "ServiceCharge14", "ServiceCharge15", "ServiceCharge16", _
+	"Tip", "PaymentMethod")
+	For Each container IN operaContainerArr
+		parameterPos = InStr(hotelDataValue, container)
+		beginDataPos = InStr(parameterPos, hotelDataValue, """") + 1
+		dataLength = InStr(beginDataPos, hotelDataValue, """") - beginDataPos
+		addValueToNewColumn sheetName, container, 2, Mid(hotelDataValue, beginDataPos, dataLength)
+	Next
+End Function
+
+'**********REPORT FUNCTIONS**********
+'Load a specific MDR file
+Function loadBoReportMdr(mdrFile)
+	killProcess "BOReport.exe"
+	If fso.FolderExists(env_PathMaitredData &"\DBF") Then
+		fso.DeleteFile(env_PathMaitredData &"\DBF\*.*"), True
+	End If
+	If fso.FolderExists("C:\Posera\Maitred\Data\ReportExports") Then
+		fso.DeleteFile("C:\Posera\Maitred\Data\ReportExports\*.*"), True
+	Else
+		fso.CreateFolder("C:\Posera\Maitred\Data\ReportExports")
+	End If
+	WshShell.Run env_PathMaitredPrg &"\" + "BOReport.exe "& env_PathVSMap & "Batch-Apps\Reports\MD7-ReportMDRs\"& mdrFile &" /f" + env_PathMaitredData &"\bo.ini " &" /ac256 /al0", 0, True
+End Function
+'Import a DBF into a UFT Datatable
+Function DBF_import(dbfFile)
+	killProcess "soffice.exe"
+	killProcess "soffice.bin"
+	programFiles = wshShell.ExpandEnvironmentStrings("%ProgramW6432%")
+	If NOT fso.FolderExists(programFiles) Then
+		programFiles = wshShell.ExpandEnvironmentStrings("%PROGRAMFILES%")
+	End If
+	If fso.FolderExists(env_PathVSMap & "\Batch-Apps\Reports\DbfExport") Then
+		fso.DeleteFile(env_PathVSMap & "\Batch-Apps\Reports\DbfExport\*.*"), True
+	Else
+		fso.CreateFolder(env_PathVSMap & "\Batch-Apps\Reports\DbfExport")
+	End If
+	WshShell.Run """"& programFiles & "\LibreOffice\program\soffice.exe"" -convert-to txt:""Text - txt - csv (StarCalc)"":9,34,0,1,1 "& env_PathMaitredData &"\DBF\"& dbfFile &" -outdir "& env_PathVSMap & "Batch-Apps\Reports\DbfExport", 0, True
+	exportedDbfFile = Replace(dbfFile, ".dbf", ".txt", 1, -1, vbTextCompare)
+	DataTable.AddSheet(dbfFile)
+	If fso.FileExists(env_PathVSMap & "\Batch-Apps\Reports\DbfExport\"& exportedDbfFile) Then
+		DataTable.ImportSheet env_PathVSMap & "\Batch-Apps\Reports\DbfExport\"& exportedDbfFile,1 , dbfFile
+	End If
+End Function
+'Check the value of a Col/Row contained in an imported DBF - From the last row
+Function DBF_checkValueFromLastRow(dbfFile, columnName, rowVal, valToSearch, equalNotEqual)
+	datatableRowCount = DataTable.GetSheet(dbfFile).GetRowCount
+	cellValue = DataTable.GetSheet(dbfFile).GetParameter(columnName).ValueByRow(datatableRowCount - rowVal)
+	If equalNotEqual = TRUE Then
+		If cellValue = valToSearch Then
+			Reporter.ReportEvent micPass, "(Col, Row)("& columnName &", "& datatableRowCount - rowVal &") in DBF "& dbfFile &" contains value """& valToSearch &"", "Search for value in DBF"
+		Else
+			Reporter.ReportEvent micFail, "(Col, Row)("& columnName &", "& datatableRowCount - rowVal &") in DBF "& dbfFile &" contains value """& cellValue &""" which IS NOT the value expected """& valToSearch &"", "Search for value in DBF"
+		End If
+	Else
+		If NOT cellValue = valToSearch Then
+			Reporter.ReportEvent micPass, "(Col, Row)("& columnName &", "& datatableRowCount - rowVal &") in DBF "& dbfFile &" does not contain value """& valToSearch &"", "Search for value in DBF"
+		Else
+			Reporter.ReportEvent micFail, "(Col, Row)("& columnName &", "& datatableRowCount - rowVal &") in DBF "& dbfFile &" CONTAINS value """& valToSearch &""" when it SHOULD NOT", "Search for value in DBF"
+		End If
+	End If
+End Function
+'Add all rows in a specific column
+Function DBF_addAllRows(dbfFile, columnName)
+	sumOfRowVals = 0
+	datatableRowCount = DataTable.GetSheet(dbfFile).GetRowCount
+	For dbfRow = 1 To datatableRowCount Step 1
+		DataTable.GetSheet(dbfFile).SetCurrentRow(dbfRow)
+		sumOfRowVals = sumOfRowVals + DataTable.GetSheet(dbfFile).GetParameter(columnName).ValueByRow(dbfRow)
+	Next
+	DBF_addAllRows = sumOfRowVals
+End Function
+
+'**********SHELL FUNCTIONS**********
+Function sendKeys(visibleObject, keys)
+	waitObjectToAppear visibleObject, 10, False
+	wshShell.AppActivate "Maitre'D POS"
+	wshShell.SendKeys(keys)
+End Function
+
+'Resize all apps
+Function resizeApps()
+	If NOT htmlPos Then
+		If Not IsEmpty(size_POS) Then
+			waitObjectToAppear Window("Maitre'D POS"), 120, False
+			Window("Maitre'D POS").Resize size_POS(0), size_POS(1)
+			Window("Maitre'D POS").Move 50, 50
+		End If
+	End If
+	If Not IsEmpty(size_InvoiceViewer) Then
+		If Window("Virtual invoice viewer").Exist(0) Then
+			Window("Virtual invoice viewer").Resize size_InvoiceViewer(0), size_InvoiceViewer(1)
+			Window("Virtual invoice viewer").Move 725, 50
+		End If
+	End If
+	If Not IsEmpty(size_KDS) Then
+		If Window("Kitchen Display System").Exist(0) Then
+			Window("Kitchen Display System").Resize size_KDS(0), size_KDS(1)
+			Window("Kitchen Display System").Move 805, 50
+			Window("Bump Box").Move 50, 650
+		End If
+	End If
+End Function
+
+'Load MaitreD invoice viewer
+Function loadInvoiceViewer()
+	killProcess "VirtualInvoiceViewer.exe"
+	wait(1)
+	WshShell.Run"""" & env_PathVSMap &"Batch-Apps\Invoice Viewer\VirtualInvoiceViewer.exe """,1 , False
+	wait(2)
+	resizeApps 'resize app function
+	copyPrintJobs 'copyPrintJobs function - copies files from wsprint to wsprint\invoiceviewer
+	wait(5)
+End Function
+
+'Load STPIClient
+Function loadStpiClient
+	if Not Window("Administrator:  STPI_Client").Exist then 
+    WshShell.Run """" & "C:\Program Files (x86)\Terminal Management Concepts\STPISecure\STPIClient\Launch STPI Client.bat""", 1, False
+    Else 
+    Reporter.ReportEvent micPass, "STPI_Client window is Activate", "STPI running Successfully"
+    End If
+End Function
+
+''''''''''''''''''''''''''''''''''''PATT Functions''''''''''''''''''''''''''''''''''''''
+
+Function applyPattPayment(checkNumVar, serverNumVar, amountVar)
+	dim path
+	WshShell.currentdirectory = env_PathVSMap & "Batch-Apps\StpiLoadTestTool"
+	path = env_PathVSMap & "Batch-Apps\StpiLoadTestTool\StpiLoadTest.jar"
+	deleteResultOfStpiLoadTest
+	WshShell.Run "java -jar " &  chr(34) & path & chr(34) & " " & "ttype=2" & " " & "check="&checkNumVar & " " & "server="&serverNumVar & " " & "amount="&amountVar 
+    wait 10
+    convertJsonToXml
+    assertSuccessfulPayment
+end function
+
+Function convertJsonToXml
+    On error resume next
+    Const ForReading = 1
+    Set resultFolder = fso.GetFolder(env_PathVSMap & "Batch-Apps\StpiLoadTestTool\results")
+    Set resultFiles = resultFolder.Files
+    For Each oFile in resultFiles
+    If lCase(fso.GetExtensionName(oFile.name)) = "json" Then
+        Set objFile = fso.OpenTextFile(oFile.Path, ForReading)
+        json1 = objFile.ReadAll
+    End If
+    Next
+	Dim lib, xmlHttp, json, JsonConvert, xmlDoc
+	Set xmlHttp = CreateObject("Microsoft.XMLHTTP")
+	
+	json = "{ ""?xml"": { ""@version"": ""1.0"", ""@standalone"": ""no"" }, ""root"":"  & json1 & "}"
+	lib = Environment("ProductDir")   & "\bin\Newtonsoft.Json.dll"
+	Set JsonConvert = DOTNetFactory.CreateInstance("Newtonsoft.Json.JsonConvert", lib)
+	Set xmlDoc = JsonConvert.DeserializeXmlNode(json)
+	pathOfXmlFile = env_PathVSMap & "Batch-Apps\StpiLoadTestTool\results\response.xml"
+	createFile xmlDoc.InnerXml, pathOfXmlFile
+End Function
+
+Function createFile(enterText, pathOfFile)
+       Set MyFile = fso.CreateTextFile(pathOfFile, True)
+       MyFile.WriteLine(enterText)
+       MyFile.Close
+End Function
+
+Function assertSuccessfulPayment
+	Set xmlDoc = CreateObject("Microsoft.XMLDOM")
+    xmlDoc.Async = False
+    If Not xmlDoc.Load(env_PathVSMap & "Batch-Apps\StpiLoadTestTool\results\response.xml") Then
+    	Reporter.ReportEvent micFail, "Cannot Load XML file", "Could not find file under " & env_PathVSMap & "Batch-Apps\StpiLoadTestTool\results\"
+    	Exit Function
+    else
+    xmlDoc.Load(env_PathVSMap & "Batch-Apps\StpiLoadTestTool\results\response.xml")
+    Set nodes = xmlDoc.SelectNodes("/root/results/result/text()")
+    For i = 0 To (nodes.Length - 1)
+       result = nodes(i).NodeValue
+       If result <> "SUCCESSFUL" Then
+       	Reporter.ReportEvent micFail, "Stpi Payment", "Payment is not Successfull"
+       End If 
+    Next
+   End If
+End Function
+
+Function deleteResultOfStpiLoadTest
+	If fso.FolderExists(env_PathVSMap & "Batch-Apps\StpiLoadTestTool\results") Then
+	   fso.DeleteFile (env_PathVSMap & "Batch-Apps\StpiLoadTestTool\results\*.*"), True
+    End If
+End Function
+
+''''''''''''''''''''''''''''''''''''HTMLPOS Button and WebElement wait''''''''''''''''''''''''''''''''''''''
+
+Function waitForButton(button)
+	posButton = Browser("Maitre'D").Page("Maitre'D").WebButton(button).Exist
+       counter = 1
+       While not posButton
+	   wait (2)
+	   button = Browser("Maitre'D").Page("Maitre'D").WebButton(button).Exist
+	   counter = counter + 1
+	   If counter=15 Then
+		posButton=True
+	   End If
+Wend
+End Function
+
+Function waitForElement(element)
+	posElement = Browser("Maitre'D").Page("Maitre'D").WebElement(element).Exist
+       counter = 1
+       While not posElement
+	   wait (2)
+	   element = Browser("Maitre'D").Page("Maitre'D").WebElement(element).Exist
+	   counter = counter + 1
+	   If counter=15 Then
+		posElement=True
+	   End If
+Wend
+End Function
+
+''''''''''''''''''''''''''''''''''''KDS Functions''''''''''''''''''''''''''''''''''''''
+
+Function kds_LoadRawReceiver()
+	killProcess "MdRawReceiver.exe"
+	wait(1)
+	clearAllMaitredFiles
+	WshShell.Run"""" & env_PathVSMap &"Batch-Apps\KDS\MdRawReceiver.exe""",1 , False
+	kds_ClearRawDataFiles
+End Function
+
+Function kds_ClearRawDataFiles
+	If NOT fso.FolderExists(env_PathMaitredData & "\KDS Raw") Then
+		fso.CreateFolder(env_PathMaitredData & "\KDS Raw\")
+	End If
+	If fso.FileExists(env_PathMaitredData & "\KDS Raw\RawData.txt") Then
+		fso.DeleteFile env_PathMaitredData & "\KDS Raw\RawData.txt", True
+	End If
+End Function
+
+Function kds_ClearRawReceiver
+	Set wsprintFolderGet = fso.GetFolder(env_PathMaitredData & "\WSPRINT")
+	Set wsprintFiles = wsprintFolderGet.Files
+	kdsFilesPresent = TRUE
+	Do While kdsFilesPresent = TRUE AND i < 30
+		For Each file in wsprintFiles
+			If left(file.Name, 1) = "W" AND right(file.Name, 3) = "009" Then
+				kdsFilesPresent = TRUE
+			Else
+				kdsFilesPresent = FALSE
+			End If
+		Next
+		wait(2)
+		i = i + 1
+	Loop
+	If kdsFilesPresent = TRUE Then
+		Reporter.ReportEvent micFail, "KDS Raw Validation", "Printjob files weren't processed in " & env_PathMaitredData & "\WSPRINT. - Folder not clear"
+		Exit Function
+	End If
+	Window("KDS TCP/IP Receiver").WinObject("Clear").Click 36,23
+	kds_ClearRawDataFiles
+End Function
+
+Function kds_SaveRawData
+	Set wsprintFolderGet = fso.GetFolder(env_PathMaitredData & "\WSPRINT")
+	Set wsprintFiles = wsprintFolderGet.Files	
+	
+	'Make sure all files are processed by the raw receiver
+	'wait(2)
+	kdsFilesPresent = TRUE
+	Do While kdsFilesPresent = TRUE AND i < 60
+		For Each file in wsprintFiles
+			If left(file.Name, 1) = "W" AND right(file.Name, 3) = "009" Then
+				kdsFilesPresent = TRUE
+			Else
+				kdsFilesPresent = FALSE
+			End If
+		Next
+		wait(1)
+		i = i + 1
+	Loop
+	Do While textInKds = FALSE AND i < 60
+		If Window("KDS TCP/IP Receiver").WinObject("KDS Raw - Textbox").GetROProperty("text") = "" Then
+			wait(1)
+		Else
+			textInKds = TRUE
+		End If
+		i = i + 1
+	Loop
+	If textInKds = FALSE Then
+		Reporter.ReportEvent micFail, "KDS Raw Receiver", "No data was imported"
+		Exit Function
+	End If
+	wait(2)
+	Window("KDS TCP/IP Receiver").WinObject("Save file").Click 71,13
+	If NOT Window("KDS TCP/IP Receiver").Dialog("Save As").WinToolbar("Address Bar").GetROProperty("text") = "Address: C:\POSERA\MaitreD\Data\KDS Raw" Then
+		Window("KDS TCP/IP Receiver").Dialog("Save As").WinEdit("File name:").Set env_PathMaitredData & "\KDS Raw"	
+		Window("KDS TCP/IP Receiver").Dialog("Save As").WinEdit("File name:").Type micReturn 	
+	End If
+	Window("KDS TCP/IP Receiver").Dialog("Save As").WinButton("Save").Click
+	Window("KDS TCP/IP Receiver").Close
+	If (env_UpdateKDSRaw) Then 'if this is set to true, we update the base raw data file of the test.
+		If (fso.FileExists(Environment.Value("TestDir") & "\RawData.txt")) Then
+			If (fso.FileExists(env_PathMaitredData & "\KDS Raw\RawData.txt")) Then
+				fso.DeleteFile Environment.Value("TestDir") & "\RawData.txt", TRUE
+				fso.CopyFile env_PathMaitredData & "\KDS Raw\RawData.txt", Environment.Value("TestDir") & "\RawData.txt", TRUE
+			End If
+		Else
+			msgBox "Update test base RawData.txt is set to TRUE - Cannot update the rawdata - cannot find " & env_PathMaitredData & "\KDS Raw\RawData.txt"
+		End If	
+	End If
+End Function
+
+Function kds_CreateArrayOfFields(arrName)
+	numRowsInArr = UBound(arrName)
+	ReDim kdsArrayOfFields(numRowsInArr, 47)
+	For rowNum = 0 To numRowsInArr Step 1
+		kdsArrayOfFields(rowNum, 0) = Mid(arrName(rowNum), 1, 6)		'	Id
+		kdsArrayOfFields(rowNum, 1) = Mid(arrName(rowNum), 7, 2)		'	Ws
+		kdsArrayOfFields(rowNum, 2) = Mid(arrName(rowNum), 9, 5)		'	Ord
+		kdsArrayOfFields(rowNum, 3) = Mid(arrName(rowNum), 14, 8)		'	SpeedID
+		kdsArrayOfFields(rowNum, 4) = Mid(arrName(rowNum), 22, 6)		'	Time
+		kdsArrayOfFields(rowNum, 5) = Mid(arrName(rowNum), 28, 2)  		'	R
+		kdsArrayOfFields(rowNum, 6) = Mid(arrName(rowNum), 30, 1) 		'	O
+		kdsArrayOfFields(rowNum, 7) = Mid(arrName(rowNum), 31, 1)		'	C
+		kdsArrayOfFields(rowNum, 8) = Mid(arrName(rowNum), 32, 1)		'	P
+		kdsArrayOfFields(rowNum, 9) = Mid(arrName(rowNum), 33, 1)		'	T
+		kdsArrayOfFields(rowNum, 10) = Mid(arrName(rowNum), 34, 2)		'	Pa
+		kdsArrayOfFields(rowNum, 11) = Mid(arrName(rowNum), 36, 3)		'	Qty
+		kdsArrayOfFields(rowNum, 12) = Mid(arrName(rowNum), 39, 20)		'	Long Description
+		kdsArrayOfFields(rowNum, 13) = Mid(arrName(rowNum), 59, 8)		'	Short
+		kdsArrayOfFields(rowNum, 14) = Mid(arrName(rowNum), 67, 7)		'	Price
+		kdsArrayOfFields(rowNum, 15) = Mid(arrName(rowNum), 74, 7)		'	Tax
+		kdsArrayOfFields(rowNum, 16) = Mid(arrName(rowNum), 81, 7)		'	Coupon
+		kdsArrayOfFields(rowNum, 17) = Mid(arrName(rowNum), 88, 7)		'	Disc
+		kdsArrayOfFields(rowNum, 18) = Mid(arrName(rowNum), 95, 7)		'	Total
+		kdsArrayOfFields(rowNum, 19) = Mid(arrName(rowNum), 102, 6)		'	Seq_
+		kdsArrayOfFields(rowNum, 20) = Mid(arrName(rowNum), 108, 12)	'	Menu
+		kdsArrayOfFields(rowNum, 21) = Mid(arrName(rowNum), 120, 13)	'	Mode
+		kdsArrayOfFields(rowNum, 22) = Mid(arrName(rowNum), 133, 8)		'	TransID
+		kdsArrayOfFields(rowNum, 23) = Mid(arrName(rowNum), 141, 15)	'	ServerName
+		kdsArrayOfFields(rowNum, 24) = Mid(arrName(rowNum), 156, 3)		'	Cus
+		kdsArrayOfFields(rowNum, 25) = Mid(arrName(rowNum), 159, 3)		'	Seq
+		kdsArrayOfFields(rowNum, 26) = Mid(arrName(rowNum), 162, 8)		'	Date
+		kdsArrayOfFields(rowNum, 27) = Mid(arrName(rowNum), 170, 5)		'	Tbl
+		kdsArrayOfFields(rowNum, 28) = Mid(arrName(rowNum), 175, 8)		'	Item_ID
+		kdsArrayOfFields(rowNum, 29) = Mid(arrName(rowNum), 183, 8)		'	AltItem
+		kdsArrayOfFields(rowNum, 30) = Mid(arrName(rowNum), 191, 3)		'	Dp
+		kdsArrayOfFields(rowNum, 31) = Mid(arrName(rowNum), 194, 3)		'	Ct
+		kdsArrayOfFields(rowNum, 32) = Mid(arrName(rowNum), 197, 3)		'	Ln
+		kdsArrayOfFields(rowNum, 33) = Mid(arrName(rowNum), 200, 6)		'	Servr
+		kdsArrayOfFields(rowNum, 34) = Mid(arrName(rowNum), 206, 2)		'	Co
+		kdsArrayOfFields(rowNum, 35) = Mid(arrName(rowNum), 208, 6)		'	Parent
+		kdsArrayOfFields(rowNum, 36) = Mid(arrName(rowNum), 214, 40)	'	CustName
+		kdsArrayOfFields(rowNum, 37) = Mid(arrName(rowNum), 254, 40)	'	CustPhone
+		kdsArrayOfFields(rowNum, 38) = Mid(arrName(rowNum), 294, 40)	'	CustAddress
+		kdsArrayOfFields(rowNum, 39) = Mid(arrName(rowNum), 334, 40)	'	CustCity
+		kdsArrayOfFields(rowNum, 40) = Mid(arrName(rowNum), 374, 40)	'	CustState
+		kdsArrayOfFields(rowNum, 41) = Mid(arrName(rowNum), 414, 6)		'	Prior
+		kdsArrayOfFields(rowNum, 42) = Mid(arrName(rowNum), 420, 20)	'	Alternated Desc
+		kdsArrayOfFields(rowNum, 43) = Mid(arrName(rowNum), 440, 6)		'	Recipe
+		kdsArrayOfFields(rowNum, 44) = Mid(arrName(rowNum), 446, 1)		'	P
+		kdsArrayOfFields(rowNum, 45) = Mid(arrName(rowNum), 447, 8)		'	D_Date
+		kdsArrayOfFields(rowNum, 46) = Mid(arrName(rowNum), 455, 6)		'	D_Time
+		kdsArrayOfFields(rowNum, 47) = Mid(arrName(rowNum), 461, 6)		'	P_Time
+	Next
+	kds_createArrayOfFields = kds_RemoveDuplicates(kdsArrayOfFields)
+End Function
+
+Function kds_RemoveDuplicates(originalArray)
+	numRowsInArr = UBound(originalArray)
+	totalCleanRows = -1
+	For rowNum = 0 To numRowsInArr Step 1
+	duplicateFound = FALSE
+		For rowNumToCheck = rowNum + 1 To numRowsInArr Step 1
+			If NOT (originalArray(rowNum, 0) = "----- " OR originalArray(rowNum, 13) = "Bump    " OR originalArray(rowNum, 13) = "Total   ") Then
+				If (originalArray(rowNum, 4) = originalArray(rowNumToCheck, 4) AND originalArray(rowNum, 7) = originalArray(rowNumToCheck, 7) AND originalArray(rowNum, 22) = originalArray(rowNumToCheck, 22) AND originalArray(rowNum, 25) = originalArray(rowNumToCheck, 25)) Then
+					duplicateFound = TRUE
+					Exit For
+				End If	
+			End If
+		Next
+		If originalArray(rowNum, 0) = "----- " Then
+			If NOT ((originalArray(rowNum - 1, 13) = "Bump    ") OR (originalArray(rowNum - 1, 13) = "Total   ")) Then
+				duplicateFound = TRUE
+			End If
+		End If
+		If NOT duplicateFound Then
+			totalCleanRows = totalCleanRows + 1
+			ReDim preserve cleanRowNumbers(totalCleanRows)
+			cleanRowNumbers(totalCleanRows) = rowNum
+		End If
+	Next
+	ReDim cleanArray(totalCleanRows, 47)
+	For cleanRow = 0 to UBound(cleanRowNumbers) Step 1
+		For field = 0 To 47 Step 1
+			cleanArray(cleanRow, field) = originalArray(cleanRowNumbers(cleanRow), field)
+		Next
+	Next
+	kds_RemoveDuplicates = cleanArray
+End Function
+
+Function kds_ValidateRawData
+	maitredVersion = getMDVersion(env_PathMaitredPrg, "bosrv.exe")
+	If env_LocalComputerName = "UFT-REGRESSION3" Then
+		detailedKDSResultPath = "HTTP://"& env_ResultsPath_Server &"/"& maitredVersion &"/"& regressionSetName &"/"& qtApp.Test.Name &"/Report"
+	Else
+		detailedKDSResultPath = "HTTP://"& env_ResultsPath_Server &"/DebugResults"& maitredProductVersion &"/"& regressionSetName &"/"& qtApp.Test.Name &"/Report"
+	End If
+	
+	Const ForReading = 1
+	Set objRegEx = CreateObject("VBScript.RegExp")
+	
+	'Load Base Raw file
+	i = 0
+	If NOT fso.FileExists(Environment.Value("TestDir") & "\RawData.txt") Then
+		Reporter.ReportEvent micFail, "KDS Raw Compare", "Could not load local KDS_BaseRaw file RawData.txt in this uft test dir " & Environment.Value("TestDir")
+		Exit Function
+	End If
+	objRegEx.Pattern = stringToFind
+	Set objBaseFile = fso.OpenTextFile(Environment.Value("TestDir") & "\RawData.txt", ForReading)
+	Do Until objBaseFile.AtEndOfStream
+	    Redim Preserve arrBaseRawLines(i)
+	    arrBaseRawLines(i) = objBaseFile.ReadLine
+	    i = i + 1
+	Loop
+	objBaseFile.Close
+	'kds_ArrayToCells "KDS_BaseRaw", arrBaseRawLines 'push array to cells
+	
+	'Load Current Raw file
+	i = 0
+	objRegEx.Pattern = stringToFind
+	If not fso.FileExists(env_PathMaitredData & "\KDS Raw\RawData.txt") Then
+		Reporter.ReportEvent micFail, "KDS Raw Validation", "Could not find the rawdata file " & env_PathMaitredData & "\KDS Raw\RawData.txt"
+		Exit Function
+	End If
+	Set objFile = fso.OpenTextFile(env_PathMaitredData & "\KDS Raw\RawData.txt", ForReading)
+	Do Until objFile.AtEndOfStream
+	    Redim Preserve arrRawLines(i)
+	    arrRawLines(i) = objFile.ReadLine
+	    i = i + 1
+	Loop
+	objFile.Close
+	
+	'Create 2d arrays with rows and seperated fields
+	arrBaseRawFields = kds_CreateArrayOfFields(arrBaseRawLines)
+	arrCurrentRawFields = kds_CreateArrayOfFields(arrRawLines)
+	
+		'Compare values from base and current sheets
+	For r = 4 To UBound(arrBaseRawFields) Step 1
+		If (UBound(arrBaseRawFields) >= r) AND (UBound(arrCurrentRawFields) >= r) Then
+			compareDescription = kds_CompareArrayValue(r, 12, arrBaseRawFields, arrCurrentRawFields)
+			If compareDescription(4) = TRUE Then 'Make sure item description matches - if not, skip other cells
+				For i = 0 To 47 Step 1
+					If NOT (i = 2 OR i = 3 OR i = 4 OR i = 26 OR i = 27) Then 'Dynamic fields to skip
+						compareResult = kds_CompareArrayValue(r, i, arrBaseRawFields, arrCurrentRawFields)
+						If compareResult(4) = FALSE Then	'If cells are different, set excel cell colour to red.
+							If errorFound = FALSE Then
+								Set XLApp = CreateObject("Excel.Application")
+								XLApp.Visible = False
+								'Create Excel file containing data to use as detailed reports
+								kds_ArrayToExcel Reporter.ReportPath & "\Report\KDS_Results.xlsx", 1, "KDS_BaseRaw", arrBaseRawFields, XLApp, True, False
+								kds_ArrayToExcel Reporter.ReportPath & "\Report\KDS_Results.xlsx", 2, "KDS_CurrentRaw", arrCurrentRawFields, XLApp, False, False
+							End If
+							Reporter.ReportHtmlEvent micFail, "<b>KDS Raw Validation</b> <br> <a href=""" & detailedKDSResultPath &"/KDS_Results.xlsx"">Click here for detailed result grid</a?" , "Values """ & compareResult(0) & """ & """ & compareResult(1) & """ from column """ & compareResult(2)& """ and row """ & r + 1 & """ are different!"
+							'Load Excel file in case we need to change cell colour PASS/FAIL
+							XLApp.Worksheets("KDS_BaseRaw").Activate
+							XLApp.Cells(r + 1,i + 1).Interior.Color = vbRed
+							XLApp.Worksheets("KDS_CurrentRaw").Activate
+							XLApp.Cells(r + 1,i + 1).Interior.Color = vbRed
+							errorFound = True
+						Else
+							Reporter.ReportEvent micPass, "KDS Raw validation", "Values """ & compareResult(0) & """ & """ & compareResult(1) & """ from column """ & compareResult(2)& """ and row """ & r + 1 & """ are identical."
+						End If
+					End IF
+				Next
+			Else
+				If errorFound = FALSE Then
+					Set XLApp = CreateObject("Excel.Application")
+					XLApp.Visible = False
+					'Create Excel file containing data to use as detailed reports
+					kds_ArrayToExcel Reporter.ReportPath & "\Report\KDS_Results.xlsx", 1, "KDS_BaseRaw", arrBaseRawFields, XLApp, True, False
+					kds_ArrayToExcel Reporter.ReportPath & "\Report\KDS_Results.xlsx", 2, "KDS_CurrentRaw", arrCurrentRawFields, XLApp, False, False
+				End If
+				Reporter.ReportHtmlEvent micFail, "<b>KDS Raw Validation</b> <br> <a href=""" & detailedKDSResultPath &"/KDS_Results.xlsx"">Click here for detailed result grid</a?" ,  "Item description missmatch for row " & r + 1 & "!"
+				'Load Excel file in case we need to change cell colour PASS/FAIL
+				XLApp.Worksheets("KDS_BaseRaw").Activate
+				XLApp.Cells(r + 1, 1).EntireRow.Interior.Color = vbRed
+				XLApp.Worksheets("KDS_CurrentRaw").Activate
+				XLApp.Cells(r + 1, 1).EntireRow.Interior.Color = vbRed
+				errorFound = True
+			End If
+		Else
+			If errorFound = FALSE Then
+				Set XLApp = CreateObject("Excel.Application")
+				XLApp.Visible = False
+				'Create Excel file containing data to use as detailed reports
+				kds_ArrayToExcel Environment.Value("TestDir") & "\Report\KDS_Results.xlsx", 1, "KDS_BaseRaw", arrBaseRawFields, XLApp, True, False
+				kds_ArrayToExcel Environment.Value("TestDir") & "\Report\KDS_Results.xlsx", 2, "KDS_CurrentRaw", arrCurrentRawFields, XLApp, False, False
+			End If
+			Reporter.ReportHtmlEvent micFail, "<b>KDS Raw Validation</b> <br> <a href=""" & detailedKDSResultPath &"/KDS_Results.xlsx>Click here for detailed result grid</a?" , "Row " & r + 1 & " doesn't exist in one of the outputs."
+			XLApp.Worksheets("KDS_BaseRaw").Activate
+			XLApp.Cells(r + 1, 1).EntireRow.Interior.Color = vbRed
+			XLApp.Worksheets("KDS_CurrentRaw").Activate
+			XLApp.Cells(r + 1, 1).EntireRow.Interior.Color = vbRed
+			errorFound = True
+		End If
+	Next
+	If errorFound Then
+		XLApp.ActiveWorkbook.Save
+		XLApp.ActiveWorkbook.Close
+		XLApp.Quit
+	End If
+End Function
+
+Function kds_ArrayToExcel (fullPath, sheetNumber, sheetName, arrName, XLApp, overwrite, closeExcel)
+	If openExcel = "" Then
+		killProcess "EXCEL.EXE"
+		Set XLApp = CreateObject("Excel.Application")
+		XLApp.Visible = False
+	End If
+	If overwrite Then
+		Set XLWorkbook = XLApp.Workbooks.Add	
+	Else
+		Set XLWorkbook = XLApp.Workbooks.Open(fullPath)
+	End If
+	Set XLSheet = XLApp.ActiveWorkbook.Worksheets(sheetNumber)
+	XLSheet.Name = sheetName
+	XLSheet.Range("5:5").Font.Bold = True
+	XLSheet.Cells.NumberFormat = "@"
+	
+	lastArrRow = UBound(arrName, 1)
+	For row = 4 To lastArrRow Step 1
+		cellRowNumber = row + 1
+		XLSheet.Cells(cellRowNumber, 1).Value = arrName(row, 0)
+		XLSheet.Cells(cellRowNumber, 2).Value = arrName(row, 1)
+		XLSheet.Cells(cellRowNumber, 3).Value = arrName(row, 2)
+		XLSheet.Cells(cellRowNumber, 4).Value = arrName(row, 3)
+		XLSheet.Cells(cellRowNumber, 5).Value = arrName(row, 4)
+		XLSheet.Cells(cellRowNumber, 6).Value = arrName(row, 5) 
+		XLSheet.Cells(cellRowNumber, 7).Value = arrName(row, 6)
+		XLSheet.Cells(cellRowNumber, 8).Value = arrName(row, 7)
+		XLSheet.Cells(cellRowNumber, 9).Value = arrName(row, 8)
+		XLSheet.Cells(cellRowNumber, 10).Value = arrName(row, 9)
+		XLSheet.Cells(cellRowNumber, 11).Value = arrName(row, 10)
+		XLSheet.Cells(cellRowNumber, 12).Value = arrName(row, 11)
+		XLSheet.Cells(cellRowNumber, 13).Value = arrName(row, 12)
+		XLSheet.Cells(cellRowNumber, 14).Value = arrName(row, 13)
+		XLSheet.Cells(cellRowNumber, 15).Value = arrName(row, 14)
+		XLSheet.Cells(cellRowNumber, 16).Value = arrName(row, 15)
+		XLSheet.Cells(cellRowNumber, 17).Value = arrName(row, 16)
+		XLSheet.Cells(cellRowNumber, 18).Value = arrName(row, 17)
+		XLSheet.Cells(cellRowNumber, 19).Value = arrName(row, 18)
+		XLSheet.Cells(cellRowNumber, 20).Value = arrName(row, 19)
+		XLSheet.Cells(cellRowNumber, 21).Value = arrName(row, 20)
+		XLSheet.Cells(cellRowNumber, 22).Value = arrName(row, 21)
+		XLSheet.Cells(cellRowNumber, 23).Value = arrName(row, 22)
+		XLSheet.Cells(cellRowNumber, 24).Value = arrName(row, 23)
+		XLSheet.Cells(cellRowNumber, 25).Value = arrName(row, 24)
+		XLSheet.Cells(cellRowNumber, 26).Value = arrName(row, 25)
+		XLSheet.Cells(cellRowNumber, 27).Value = arrName(row, 26)
+		XLSheet.Cells(cellRowNumber, 28).Value = arrName(row, 27)
+		XLSheet.Cells(cellRowNumber, 29).Value = arrName(row, 28)
+		XLSheet.Cells(cellRowNumber, 30).Value = arrName(row, 29)
+		XLSheet.Cells(cellRowNumber, 31).Value = arrName(row, 30)
+		XLSheet.Cells(cellRowNumber, 32).Value = arrName(row, 31)
+		XLSheet.Cells(cellRowNumber, 33).Value = arrName(row, 32)
+		XLSheet.Cells(cellRowNumber, 34).Value = arrName(row, 33)
+		XLSheet.Cells(cellRowNumber, 35).Value = arrName(row, 34)
+		XLSheet.Cells(cellRowNumber, 36).Value = arrName(row, 35)
+		XLSheet.Cells(cellRowNumber, 37).Value = arrName(row, 36)
+		XLSheet.Cells(cellRowNumber, 38).Value = arrName(row, 37)
+		XLSheet.Cells(cellRowNumber, 39).Value = arrName(row, 38)
+		XLSheet.Cells(cellRowNumber, 40).Value = arrName(row, 39)
+		XLSheet.Cells(cellRowNumber, 41).Value = arrName(row, 40)
+		XLSheet.Cells(cellRowNumber, 42).Value = arrName(row, 41)
+		XLSheet.Cells(cellRowNumber, 43).Value = arrName(row, 42)
+		XLSheet.Cells(cellRowNumber, 44).Value = arrName(row, 43)
+		XLSheet.Cells(cellRowNumber, 45).Value = arrName(row, 44)
+		XLSheet.Cells(cellRowNumber, 46).Value = arrName(row, 45)
+		XLSheet.Cells(cellRowNumber, 47).Value = arrName(row, 46)
+		XLSheet.Cells(cellRowNumber, 48).Value = arrName(row, 47)
+	Next
+	If overwrite Then
+		If fso.FileExists(fullPath) Then
+			fso.DeleteFile fullPath
+		End If
+		XLApp.ActiveWorkbook.SaveAs(fullPath)
+	else
+		XLApp.ActiveWorkbook.Save
+	End If
+	If closeExcel Then
+		XLApp.ActiveWorkbook.Close
+		XLApp.Quit
+	End If
+
+End Function
+
+
+Function kds_ArrayToCells (sheetName, arrName)
+	For i = 4 To UBound(arrName) Step 1
+		kdsRawLineValue = arrName(i)
+		cellRowNumber = i + 1
+		addValueToNewColumn sheetName, "Id", cellRowNumber, Mid(kdsRawLineValue, 1, 6)
+		addValueToNewColumn sheetName, "Ws", cellRowNumber, Mid(kdsRawLineValue, 7, 2)
+		'addValueToNewColumn sheetName, "Ord", cellRowNumber, Mid(kdsRawLineValue, 9, 5)
+		'addValueToNewColumn sheetName, "SpeedID", cellRowNumber, Mid(kdsRawLineValue, 14, 8)
+		'addValueToNewColumn sheetName, "Time", cellRowNumber, Mid(kdsRawLineValue, 22, 6)
+		'addValueToNewColumn sheetName, "R", cellRowNumber, Mid(kdsRawLineValue, 28, 2) 
+		'addValueToNewColumn sheetName, "O", cellRowNumber, Mid(kdsRawLineValue, 30, 1)
+		addValueToNewColumn sheetName, "C", cellRowNumber, Mid(kdsRawLineValue, 31, 1)
+		addValueToNewColumn sheetName, "P", cellRowNumber, Mid(kdsRawLineValue, 32, 1)
+		addValueToNewColumn sheetName, "T", cellRowNumber, Mid(kdsRawLineValue, 33, 1)
+		addValueToNewColumn sheetName, "Pa", cellRowNumber, Mid(kdsRawLineValue, 34, 2)
+		addValueToNewColumn sheetName, "Qty", cellRowNumber, Mid(kdsRawLineValue, 36, 3)
+		addValueToNewColumn sheetName, "Long Description", cellRowNumber, Mid(kdsRawLineValue, 39, 20)
+		addValueToNewColumn sheetName, "Short", cellRowNumber, Mid(kdsRawLineValue, 59, 8)
+		'addValueToNewColumn sheetName, "Price", cellRowNumber, Mid(kdsRawLineValue, 67, 7)
+		'addValueToNewColumn sheetName, "Tax", cellRowNumber, Mid(kdsRawLineValue, 74, 7)
+		'addValueToNewColumn sheetName, "Coupon", cellRowNumber, Mid(kdsRawLineValue, 81, 7)
+		'addValueToNewColumn sheetName, "Disc", cellRowNumber, Mid(kdsRawLineValue, 88, 7)
+		'addValueToNewColumn sheetName, "Total", cellRowNumber, Mid(kdsRawLineValue, 95, 7)
+		'addValueToNewColumn sheetName, "Seq_", cellRowNumber, Mid(kdsRawLineValue, 102, 6)
+		'addValueToNewColumn sheetName, "Menu", cellRowNumber, Mid(kdsRawLineValue, 108, 12)
+		addValueToNewColumn sheetName, "Mode", cellRowNumber, Mid(kdsRawLineValue, 120, 13)
+		'addValueToNewColumn sheetName, "TransID", cellRowNumber, Mid(kdsRawLineValue, 133, 8) RE-add for official tests
+		addValueToNewColumn sheetName, "ServerName", cellRowNumber, Mid(kdsRawLineValue, 141, 15)
+		addValueToNewColumn sheetName, "Cus", cellRowNumber, Mid(kdsRawLineValue, 156, 3)
+		'addValueToNewColumn sheetName, "Seq", cellRowNumber, Mid(kdsRawLineValue, 159, 3)
+		'addValueToNewColumn sheetName, "Date", cellRowNumber, Mid(kdsRawLineValue, 162, 8)
+		'addValueToNewColumn sheetName, "Tbl", cellRowNumber, Mid(kdsRawLineValue, 170, 5)
+		'addValueToNewColumn sheetName, "Item_ID", cellRowNumber, Mid(kdsRawLineValue, 175, 8)
+		'addValueToNewColumn sheetName, "AltItem", cellRowNumber, Mid(kdsRawLineValue, 183, 8)
+		'addValueToNewColumn sheetName, "Dp", cellRowNumber, Mid(kdsRawLineValue, 191, 3)
+		addValueToNewColumn sheetName, "Ct", cellRowNumber, Mid(kdsRawLineValue, 194, 3)
+		addValueToNewColumn sheetName, "Ln", cellRowNumber, Mid(kdsRawLineValue, 197, 3)
+		addValueToNewColumn sheetName, "Servr", cellRowNumber, Mid(kdsRawLineValue, 200, 6)
+		addValueToNewColumn sheetName, "Co", cellRowNumber, Mid(kdsRawLineValue, 206, 2)
+		addValueToNewColumn sheetName, "Parent", cellRowNumber, Mid(kdsRawLineValue, 208, 6)
+		addValueToNewColumn sheetName, "CustName", cellRowNumber, Mid(kdsRawLineValue, 214, 40)
+		addValueToNewColumn sheetName, "CustPhone", cellRowNumber, Mid(kdsRawLineValue, 254, 40)
+		addValueToNewColumn sheetName, "CustAddress", cellRowNumber, Mid(kdsRawLineValue, 294, 40)
+		addValueToNewColumn sheetName, "CustCity", cellRowNumber, Mid(kdsRawLineValue, 334, 40)
+		addValueToNewColumn sheetName, "CustState", cellRowNumber, Mid(kdsRawLineValue, 374, 40)
+		addValueToNewColumn sheetName, "Prior", cellRowNumber, Mid(kdsRawLineValue, 414, 6)
+		addValueToNewColumn sheetName, "Alternated Desc", cellRowNumber, Mid(kdsRawLineValue, 420, 20)
+		addValueToNewColumn sheetName, "Recipe", cellRowNumber, Mid(kdsRawLineValue, 440, 6)
+		addValueToNewColumn sheetName, "P", cellRowNumber, Mid(kdsRawLineValue, 446, 1)
+		'addValueToNewColumn sheetName, "D_Date", cellRowNumber, Mid(kdsRawLineValue, 447, 8)
+		addValueToNewColumn sheetName, "D_Time", cellRowNumber, Mid(kdsRawLineValue, 455, 6)
+		addValueToNewColumn sheetName, "P_Time", cellRowNumber, Mid(kdsRawLineValue, 461, 6)
+	Next
+End Function
+
+Function kds_CompareArrayValue(row, field, baseArrayName, currentArrayName)
+	dim returnArr(4)
+	headerNameArr = Array("Id", "Ws", "Ord", "SpeedID", "Time", "R", "O", "C", "P", "T", "Pa", "Qty", "Long Description", _
+	"Short", "Price", "Tax", "Coupon", "Disc", "Total", "Seq_", "Menu", "Mode", "TransID", "ServerName", "Cus", "Seq", _
+	"Date", "Tbl", "Item_ID", "AltItem", "Dp", "Ct", "Ln", "Servr", "Co", "Parent", "CustName", "CustPhone", "CustAddress", _
+	"CustCity", "CustState", "Prior", "Alternated Desc", "Recipe", "P", "D_Date", "D_Time", "P_Time")
+	baseVal = baseArrayName(row, field)
+	currentVal = currentArrayName(row, field)
+	returnArr(0) = baseVal
+	returnArr(1) = currentVal
+	returnArr(2) = headerNameArr(field)
+	returnArr(3) = rowNumber
+	If baseVal = currentVal Then
+		returnArr(4) = TRUE
+	Else
+		returnArr(4) = FALSE
+	End If
+	kds_CompareArrayValue = returnArr
+End Function
+
+
+Function kds_compareCellValue(rowNumber, columnIndex, baseSheetName, currentSheetName)
+	dim returnArr(4)
+	DataTable.SetCurrentRow(rowNumber)
+	baseVal = DataTable.Value(columnIndex, baseSheetName)
+	DataTable.SetCurrentRow(rowNumber)
+	currentVal = DataTable.Value(columnIndex, currentSheetName)
+	columnName = DataTable.GetSheet(baseSheetName).GetParameter(columnIndex).Name
+	returnArr(0) = baseVal
+	returnArr(1) = currentVal
+	returnArr(2) = columnName
+	returnArr(3) = rowNumber
+	If baseVal = currentVal Then
+		returnArr(4) = TRUE
+	Else
+		returnArr(4) = FALSE
+	End If
+	kds_compareCellValue = returnArr
+End Function
+
+'**********'hotel functions********** 
+ 'kill hotel apps
+Function killHotelApps
+	If legacyHotel Then
+		wait(2)
+	End If
+    killProcess "mpipos.exe"
+    killProcess "OperaEmulator.exe"
+End Function
+
+'start micros ip 
+Function startMicrosEmulator
+	killHotelApps
+	WshShell.Run """" & env_PathVSMap & "Batch-Apps\micros_IP\mpipos.exe""",1 , False
+	If (Window("Micros IP").Exist(120)) Then
+		Reporter.ReportEvent micPass, "Micros Ip", "Micros IP Started"
+	Else
+		Reporter.ReportEvent micFail, "Micros Ip", "Micros IP was NOT Started"
+	End If
+	resizeApps
+End Function
+
+'start Opera ip Emulator
+Function startOperaEmulator
+ 	killHotelApps
+	WshShell.Run """" & env_PathVSMap & "Batch-Apps\OperaEmulator\OperaEmulator.exe""",1 , False
+	Dialog("Opera Emulator").Activate
+	Dialog("Opera Emulator").WinButton("Start").Click
+	searchForProcess ".", "OperaEmulator.exe",120
+	wait(30) 'it can sometimes take up to 30 seconds to reconnect to opera
+End Function
+
+'Restore MaitreD Database
+Function restoreMaitredDatabase
+	killProcess "mshta.exe"
+	winCompatRegistry = "HKCU\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers"
+	winCompatSetting = "~ WIN7RTM"
+	compatApplications = Array("POS.EXE", "Starter.exe")
+	
+	If oposSim Then
+		For Each application in compatApplications
+			WshShell.Run "Reg.exe ADD """ & winCompatRegistry & """"_
+			& " /V """ & env_PathMaitredPOS & env_MainMaitredPOS & application & """"_
+			& " /T REG_SZ"_
+			& " /D """ & winCompatSetting & """"_
+			& " /F", 0, TRUE
+		Next
+	Else
+		For Each application in compatApplications
+			WshShell.Run "Reg.exe DELETE """ & winCompatRegistry & """"_
+			& " /V """ & env_PathMaitredPOS & env_MainMaitredPOS & application & """"_
+			& " /F", 0, TRUE
+		Next
+	End If
+	If htmlPos then
+		WshShell.Run """"& env_PathVSMap &"Batch-Apps\Restore MD7 Database.hta"" """ & env_ClientDBFolderName & """ ""True""",1 , TRUE
+	else
+		WshShell.Run """"& env_PathVSMap &"Batch-Apps\Restore MD7 Database.hta"" """ & env_ClientDBFolderName &"""",1 , TRUE
+	End If
+	If NOT IsEmpty(mdScriptToExecute) Then
+		mdScripterExecute mdScriptToExecute, TRUE, TRUE
+	End If
+	wait(5)
+	If kdsEmulator then
+		loadKdsWindows
+	End IF
+	resizeApps
+	If htmlPos then
+		htmlPos_Connect
+	End If
+End Function
+
+Function getMDVersion (pvPath, pvFile)
+	productVersion = getProductVersion(pvPath, pvFile)
+	fileVersion = getFileVersion(pvPath, pvFile)
+	If Right(fileVersion, 1) <> 0 Then
+		maitredVersion = Left(productVersion, Len(productVersion) -1) & "0 PR" & Right(fileVersion, 1)
+	Else 
+		maitredVersion = productVersion
+	End If
+	getMDVersion = maitredVersion
+End Function
+
+'Get product version
+Function getProductVersion (pvPath, pvFile)
+	Dim productVersion
+	Set objShell = CreateObject("Shell.Application")
+	If fso.FileExists(pvPath &"\"& pvFile) Then
+		Set objFolder = objShell.Namespace(pvPath )
+		Set objFolderItem = objFolder.ParseName(pvFile)
+		Dim arrHeaders(300)
+		For i = 0 To 300
+			arrHeaders(i) = objFolder.GetDetailsOf(objFolder.Items, i)
+			If lcase(arrHeaders(i))= "product version" Then
+				productVersion = objFolder.GetDetailsOf(objFolderItem, i)
+				Exit For
+			End If
+		Next
+	Else
+		Reporter.ReportEvent micFail, "Check for HotFix Update", "Could not find "& pvPath &"\"& pvFile
+	End If
+	getProductVersion = productVersion
+End Function
+
+
+Function getFileVersion (pvPath, pvFile)
+	Dim fileVersion
+	Set objShell = CreateObject("Shell.Application")
+	If fso.FileExists(pvPath &"\"& pvFile) Then
+		Set objFolder = objShell.Namespace(pvPath )
+		Set objFolderItem = objFolder.ParseName(pvFile)
+		Dim arrHeaders(300)
+		For i = 0 To 300
+			arrHeaders(i) = objFolder.GetDetailsOf(objFolder.Items, i)
+			If lcase(arrHeaders(i))= "file version" Then
+				fileVersion = objFolder.GetDetailsOf(objFolderItem, i)
+				Exit For
+			End If
+		Next
+	Else
+		Reporter.ReportEvent micFail, "Check for HotFix Update", "Could not find "& pvPath &"\"& pvFile
+	End If
+	getFileVersion = fileVersion
+End Function
+
+'Check for new HotFix/Service Pack update on TFS/QA Builds and install if necessary
+Function checkForHfUpdate
+	'restore fresh database
+	restoreMaitredDatabase
+	'get current installed version
+	maitredVersion = getMDVersion(env_PathMaitredPrg, "bosrv.exe")
+	'get latest HF folder in Md version folder
+	If fso.FolderExists(env_mdVerFolder) Then
+		Set getMD_Ver_Folder = fso.GetFolder(env_mdVerFolder)
+		For Each fldr In getMD_Ver_Folder.SubFolders
+			If ((InStr(fldr.Name, "Pre") = 0) AND (InStr(fldr.Name, "Base") = 0)) Then
+				If ((fldr.DateLastModified > LastHfDate) Or (IsEmpty(LastHfDate))) Then
+					LastHfFolder = fldr.Name
+					LastHfDate = fldr.DateLastModified
+				End If
+			Else
+				'msgBox(fldr.Name)
+			End If
+		Next
+		hotFixFolder = env_mdVerFolder &"\"& LastHfFolder
+		'get latest Build folder in HF version folder
+		If fso.FolderExists(hotFixFolder) Then
+			Set getMD_HF_Folder = fso.GetFolder(hotFixFolder)
+			For Each fldr In getMD_HF_Folder.SubFolders
+				If ((fldr.DateLastModified > LastBuildDate) Or (IsEmpty(LastBuildDate))) Then
+					LastBuildFolder = fldr.Name
+					LastBuildDate = fldr.DateLastModified
+				End If
+			Next
+			buildFolder = hotFixFolder &"\"& LastBuildFolder
+			'get version of the installation file
+			If fso.FolderExists(buildFolder) Then
+				Set getMD_HF_File = fso.GetFolder(buildFolder)
+				For Each File In getMD_HF_File.Files
+					If StrComp(Left(File.Name, 5), "MDBO7", vbTextCompare) = 0 Then
+					 	installationFile = File.Name
+					End If
+				Next
+				If fso.FileExists(buildFolder &"\"& installationFile) Then
+					servicePackVersion = getMDVersion(buildFolder, installationFile)
+					'compare version of installation file to the version of the installed bosrv and install if necessary
+					If Not (servicePackVersion = maitredVersion) Then
+						'install Back-Office update
+						Reporter.ReportEvent micPass, "Check for HotFix Update", "Installing new HotFix!! - From "& maitredVersion &" to "& servicePackVersion
+						WshShell.Run """" & env_PathVSMap &"Batch-Apps\KillAll.bat""", 1, true
+						WshShell.Run ("sc config ""Maitre'D Communication Server"" start= disabled"), 0, true
+						WshShell.Run ("sc config ""Maitre'D Monitor Service"" start= disabled"), 0, true
+						WshShell.Run ("sc config ""Maitre'D 7 Communication Server"" start= disabled"), 0, true
+						WshShell.Run ("sc stop ""Maitre'D Communication Server"""), 0, true
+						WshShell.Run ("sc stop ""Maitre'D Monitor Service"""), 0, true
+						WshShell.Run ("sc stop ""Maitre'D 7 Communication Server"""), 0, true
+						'Install SP!
+						WshShell.Run buildFolder &"\"& installationFile &" AUTO NOREBOOT", 1, True
+						WshShell.Run ("sc config ""Maitre'D Communication Server"" start= auto")
+						WshShell.Run ("sc config ""Maitre'D Monitor Service"" start= auto"), 0, true
+						WshShell.Run ("sc config ""Maitre'D 7 Communication Server"" start= auto"), 0, true
+						WshShell.Run ("sc start ""Maitre'D Communication Server"""), 0, true
+						WshShell.Run ("sc start ""Maitre'D Monitor Service"""), 0, true
+						WshShell.Run ("sc start ""Maitre'D 7 Communication Server"""), 0, true
+						loadBosrvPos
+						loadKdsWindows
+						resizeApps
+						'Copy MDScripter
+						If fso.FileExists(buildFolder & "\tools\MDScripter.exe")  Then
+							If fso.FileExists(env_PathMaitredPrg & "\MDScripter.exe") Then
+								fso.DeleteFile env_PathMaitredPrg & "\MDScripter.exe", TRUE
+							End If
+							fso.CopyFile buildFolder & "\tools\MDScripter.exe", env_PathMaitredPrg & "\", TRUE
+						End If 
+						'Make sure that MaitreD has the correct file versions
+						validateMdFileVersions servicePackVersion
+						knownIssue = Array("Installed new HotFix! - From "& maitredVersion &" to "& servicePackVersion, FALSE)
+						checkEndEnvironment
+					Else
+						Reporter.ReportEvent micPass, "Check for HotFix Update", "No new HotFix found - Installed MD Version: "& maitredVersion &" - Latest HF: "& servicePackVersion
+						'Make sure that MaitreD has the correct file versions
+						validateMdFileVersions servicePackVersion
+						checkEndEnvironment
+					End If
+				Else
+					Reporter.ReportEvent micFail, "Check for HotFix Update", "Could not find "& buildFolder &"\"& installationFile
+				End If
+			Else
+				Reporter.ReportEvent micFail, "Check for HotFix Update", "Could not find "& buildFolder
+			End If
+		Else
+			Reporter.ReportEvent micFail, "Check for HotFix Update", "Could not find "& hotFixFolder
+		End If
+	Else
+		Reporter.ReportEvent micFail, "Check for HotFix Update", "Could not find "& env_mdVerFolder
+	End If
+End Function
+
+'Validate MaitreD file versions
+Function validateMdFileVersions(expectedVersion)
+	Dim arrayOfBinsToValidate
+	arrayOfBinsToValidate = Array("bo.exe", "boar.exe", "bocnfg.exe", "bodeliv.exe", "boeft.exe", "bofloor.exe", "bogl.exe", "boinv.exe", "bopos.exe", "boposext.dll", "BoReport.exe", "BoRpt1.dll", "BoRpt2.dll", "BoRpt3.dll", "BoRpt4.dll", "bosrv.exe", "bosrveft.exe", "bota.exe", "boutil.exe", "CapitalLandExport.exe", "converter.exe", "DataboardConnector.dll", "DataSynchApi.dll", "DcrExport.exe", "DigitalSignatureGenerator.dll", "EftProcess.exe", "ExtPassValidator.exe", "GdprArchiveCleaner.dll", "gio.dll", "GioAccess.dll", "GioAccessServer.exe", "GioDataLoader.dll", "HyperVisionInterface.dll", "InvoiceExtractor.exe", "JetValidator.exe", "lec.dll", "Mapper.exe", "MDCryptWrapper.dll", "MDDataSource.dll", "MDInvConvert.exe", "MDInvImport.exe", "mdmssql.exe", "MDProcessor.exe", "MDRename.exe", "MDReport.dll", "MDScriptInterpreter.dll", "MDSysMonitor.Core.dll", "MDSysMonitor.Packager.dll", "MDSysMonitor.Service.dll", "MDSysMonitor.VersionMonitor.dll", "MDTransServer.exe", "MDWebClient.exe", "MU.Utilities.dll", "pass.dll", "Posera.Common.Control.dll", "Posera.Common.Entity.dll", "Posera.Common.Interface.dll", "Posera.Common.Service.DatabaseManager.dll", "Posera.Common.Service.dll", "Posera.Common.Shared.dll", "Posera.Common.Utilities.dll", "Posera.MaitreD.BusinessLogic.dll", "Posera.MaitreD.CommonManaged.dll", "Posera.MaitreD.Controller.dll", "Posera.MaitreD.Entities.dll", "Posera.MaitreD.Interface.dll", "Posera.MaitreD.MDProxy.Entities.dll",  "Posera.MaitreD.Presenter.dll", "Posera.MaitreD.UtilityCenter.BusinessLogic.dll", "Posera.MaitreD.UtilityCenter.Controller.dll", "Posera.MaitreD.UtilityCenter.Interface.dll", "Posera.MaitreD.UtilityCenter.Presenter.dll", "Posera.MaitreD.UtilityCenter.View.dll", "Posera.MaitreD.View.dll", "posrpt001.dll", "posrpt002.dll", "posrpt003.dll", "PosWin.exe", "PosWinHtml.exe", "QuickExport.exe", "ResDiaryServices.dll", "rpt.dll", "SalesExport.exe", "ScreenClient.exe", "SharedDeviceManagerUtilities.dll", "sio.dll", "SoftkeyWrapper.dll", "srvman.exe", "starter.exe", "system.dll", "timedate.dll", "TTLVProtocol.dll", "UtilityCenter.exe", "WinServiceCom.dll", "winuti.dll", "WsRpt004.dll", "YakunExport.exe")
+	newmaitredProductVersion = getMDVersion(env_PathMaitredPrg, "bosrv.exe")
+	For each mdFile In arrayOfBinsToValidate
+		mdVersion = getProductVersion(env_PathMaitredPrg, mdFile)
+		If expectedVersion = newmaitredProductVersion Then
+			Reporter.ReportEvent micPass, "MaitreD and SP version are the same!" , "MaitreD file "& mdFile &" is "& newmaitredProductVersion & " - Service Pack is "& expectedVersion
+		Else
+			Reporter.ReportEvent micFail, "MaitreD and SP version are NOT the same!" , "MaitreD file "& mdFile &" is "& newmaitredProductVersion & " - Service Pack is "& expectedVersion
+		End If
+	Next
+End Function
+
+'Look for running process
+Function searchForProcess(sComputerName, pName, waitFor)
+	Set objWMIService = GetObject("winmgmts:{impersonationLevel=Impersonate}!\\" & sComputerName & "\root\cimv2")
+	sQuery = "SELECT * FROM Win32_Process"
+	count = 1
+	Do
+		Set objItems = objWMIService.ExecQuery(sQuery)
+		For Each objItem In objItems
+			If objItem.Name = pName Then
+				loaded = objItem.Name
+			End If
+		Next
+		Set objItems = Nothing
+		wait(1)
+		count = count + 1
+	Loop Until loaded = pName OR count > waitFor
+	If loaded = pName Then
+		Reporter.ReportEvent micPass, "Look for process...", pName & " is running"
+	Else
+		Reporter.ReportEvent micFail, "Look for process...", pName & " is NOT running!"
+	End If
+End Function
+
+'Wait for process to close
+Function waitForProcessToClose(pName, waitFor)
+	sComputerName = "."
+	Set objWMIService = GetObject("winmgmts:\\" & sComputerName & "\root\cimv2")
+	sQuery = "SELECT * FROM Win32_Process"
+	count = 1
+	Do
+		loaded = ""
+		Set objItems = objWMIService.ExecQuery(sQuery)
+		For Each objItem In objItems
+			If objItem.Name = pName Then
+				loaded = objItem.Name
+			End If
+		Next
+		Set objItems = Nothing
+		wait(1)
+		count = count + 1
+	Loop Until loaded <> pName OR count > waitFor
+	If loaded <> pName Then
+		Reporter.ReportEvent micPass, "Wait for process to close", pName & " was closed succesfully"
+		waitForProcessToClose = TRUE
+	Else
+		Reporter.ReportEvent micFail, "Wait for process to close", pName & " was NOT closed succesfully!"
+		waitForProcessToClose = False
+	End If
+End Function
+
+'Kill process
+Function killProcess(processToKill)
+		set service = GetObject ("winmgmts:")
+		'Kill all existing VNCViewer processes
+		for each Process in Service.InstancesOf ("Win32_Process")
+			If Process.Name = processToKill then
+				WshShell.Run "taskkill /f /im "& processToKill, 0, true
+			End If
+		next
+End Function
+
+'Kill processes pre-Eglobal tests
+Function killAllBoModules
+	killProcess "bo.exe"
+	killProcess "srvman.exe"
+	killProcess "bopos.exe"
+	killProcess "boDeliv.exe"
+	killProcess "boinv.exe"
+	killProcess "bota.exe"
+	killProcess "boutil.exe"
+	killProcess "boar.exe"
+	killProcess "bogl.exe"
+	killProcess "BOReport.exe"
+	killProcess "boeft.exe"
+	killProcess "converter.exe"
+	killProcess "bocnfg.exe"
+	killProcess "DatabaseCenter.exe"
+	killProcess "BoSafe.exe"
+	killProcess "UtilityCenter.exe"
+	killProcess "bofloor.exe"
+	killProcess "BoMult.exe"
+	killProcess "Broadcaster.exe"
+	killProcess "MDScripter.exe"
+End Function
+		
+
+'Return a services current status
+Function getServiceStatus(sComputerName, sName)
+	Set objWMIService = GetObject("winmgmts:{impersonationLevel=Impersonate}!\\" & sComputerName & "\root\cimv2")
+	sQuery = "SELECT * FROM Win32_Service"
+	Set colServices = objWMIService.ExecQuery(sQuery)
+	For Each objService In colServices
+		If (objService.Name = sName) Then
+			sNameFound = True
+			If (objService.State = "Running") Then
+				Reporter.ReportEvent micPass, "Look for service status...", sName &" is "& objService.State
+			Else
+				Reporter.ReportEvent micFail, "Look for service status...", sName &" is "& objService.State
+			End If
+		End If
+	Next
+	If Not (sNameFound = True) Then
+		Reporter.ReportEvent micFail, "Look for service status...", sName &" was not installed!"
+		writeTestResultToSQL "KDS Window was not detected!! - Test aborted", false
+		ExitTest
+	End If
+End Function
+
+'Load Kds Windows
+Function loadKdsWindows
+	''Kill all existing VNCViewer processes
+	'killProcess "mstsc.exe"
+	'wait(1)
+	''Load all VNC connections to Kdss
+	'For i = 1 To env_NumOfKdss Step 1
+	'	WshShell.Run """"& env_PathVSMap &"Batch-Apps\RemoteDesktop\KDS-"& i &".rdp", 1, False
+	'Next	
+	''Make sure that KDSs are on top.
+	'For i = 1 To env_NumOfKdss Step 1
+	'	Window("KDS " & i).Activate
+	'	Window("KDS " & i).WinObject("Input Capture Window").Click 130, 584, micRightBtn
+	'	Window("KDS " & i).WinObject("Input Capture Window").Click 178,472
+	'	Window("KDS " & i).WinObject("Input Capture Window").Click 134,16
+	'Next
+	killProcess "KDS.exe"
+	If (env_NumOfCvms > 0) Then
+		WshShell.Run "C:\Users\Public\CVM\KDS.exe", False
+		If Window("Kitchen Display System").Exist(30) Then
+			Window("Kitchen Display System").DblClick 116,116
+		Else
+			Reporter.ReportEvent micFail, "KDS Startup", "KDS did not load/KDS object was not seen!"
+		End If
+	End If
+	wait(2)
+End Function
+'**********
+
+
+'**********OCR FUNCTIONS**********
+'Replace Q with 0 in captured string
+Function OCRreplaceQwith0(UFTdataTable)
+	posTableNumberString = DataTable.Value(UFTdataTable, dtGlobalSheet)
+	DataTable.Value(UFTdataTable, dtGlobalSheet) = Replace(posTableNumberString,"Q","0")
+End Function
+'**********
+
+
+'**********APPLICATION FUNCTIONS**********
+'Process printjobviewer printjob
+Function App_ProcessPrintJob(printJobPosition, checkpointName)
+	Select Case printJobPosition
+		Case 1 Window("Virtual invoice viewer").WinObject("WindowsForms10.LISTBOX.app.0.3").Click 25,5
+		Case 2 Window("Virtual invoice viewer").WinObject("WindowsForms10.LISTBOX.app.0.3").Click 25,20
+		Case 3 Window("Virtual invoice viewer").WinObject("WindowsForms10.LISTBOX.app.0.3").Click 25,33
+		Case 4 Window("Virtual invoice viewer").WinObject("WindowsForms10.LISTBOX.app.0.3").Click 25,46
+		Case 5 Window("Virtual invoice viewer").WinObject("WindowsForms10.LISTBOX.app.0.3").Click 25,59
+		Case 6 Window("Virtual invoice viewer").WinObject("WindowsForms10.LISTBOX.app.0.3").Click 25,72
+		Case 7 Window("Virtual invoice viewer").WinObject("WindowsForms10.LISTBOX.app.0.3").Click 25,85
+		Case 8 Window("Virtual invoice viewer").WinObject("WindowsForms10.LISTBOX.app.0.3").Click 25,98
+	End Select
+	Window("Virtual invoice viewer").WinObject("Refresh").Click 48,13
+	Window("Virtual invoice viewer").WinObject("Internet Explorer_Server").Check CheckPoint(checkpointName)
+End Function
+
+'Bump all CVMs
+Function App_BumpAllCVM
+	'For i = 1 To env_NumOfCvms Step 1
+	'	Window("KDS " & i).Activate
+	'	Window("KDS " & i).WinObject("Input Capture Window").Click 222,476
+	'Next
+	If (env_NumOfCvms > 0) Then
+		If Window("Kitchen Display System").Exist(30) Then
+			Window("Kitchen Display System").DblClick 116,116
+		Else
+			Reporter.ReportEvent micFail, "KDS Startup", "KDS did not load/KDS object was not seen!"
+		End If
+	End If
+End Function
+
+'Send Advanced Databoard transactions
+Function sendTransToDataboard(transName, transDate, transTime, transDescription)
+	If NOT fso.FolderExists(env_PathMaitredData & "\Int\Temp") Then
+		fso.CreateFolder(env_PathMaitredData & "\Int\Temp\")
+	End If
+	If NOT fso.FileExists(env_PathVSMap & "Batch-Apps\Databoard Transactions\"& regressionSetName & MD7 & transName) Then
+		Reporter.ReportEvent micFail, "Send Transaction To Databoard "& transDescription, env_PathVSMap & "Batch-Apps\Databoard Transactions\"& regressionSetName & MD7 & transName &" was not found!"
+		Exit Function
+	End If
+	
+	fso.CopyFile env_PathVSMap & "Batch-Apps\Databoard Transactions\"& regressionSetName & MD7 & transName, env_PathMaitredData & "\Int\Temp", TRUE
+	searchForStringInFileReplace env_PathMaitredData & "\Int\Temp\" & transName, "$FISCAL DATE$", transDate
+	searchForStringInFileReplace env_PathMaitredData & "\Int\Temp\" & transName, "$TIME$", transTime	
+End Function
+'**********
+
+'*********Database Functions***********
+'Execute MDScripter script
+Function mdScripterExecute (scriptName, restartBosrv, wsData)
+	killProcess "MDScripter.exe"
+	scriptFilePath = env_PathVSMap & env_ClientDBFolderName & "MDScripter\" & scriptName
+	If fso.FolderExists(env_PathMaitredData & "\MDScripter") Then
+		fso.DeleteFolder(env_PathMaitredData & "\MDScripter"), TRUE
+	End If
+	fso.CreateFolder(env_PathMaitredData & "\MDScripter")
+	
+	If fso.FileExists(scriptFilePath) Then
+		fso.CopyFile scriptFilePath, env_PathMaitredData & "\MDScripter\"
+	Else
+		Reporter.ReportEvent micFail, "mdScriptExecuteFunction", "Cannot find script file " & scriptFilePath
+		Exit Function
+	End If
+	'Execute script
+	WshShell.Exec env_PathMaitredPrg &"\MDScripter.exe /f" + env_PathMaitredData &"\bo.ini /al0 /sf" & env_PathMaitredData & "\MDScripter\" & scriptName
+	'Restart BOSRV and POS if required
+	If restartBosrv Then
+		WshShell.Run """" & env_PathVSMap &"Batch-Apps\KillAll.bat""", 1, true
+		waitForProcessToClose "bosrv.exe", 30
+		loadBosrv
+		If wsData Then
+			md_WsData FALSE
+		End If
+		loadPos
+		resizeApps
+	End If
+	'Perform WSData if required
+	If wsData AND NOT restartBosrv Then
+		md_WsData TRUE
+		resizeApps
+	End If
+End Function
+'**********
+
+'**********MAITRED FUNCTIONS**********
+Function md_WsData(checkForPOS)
+	WshShell.Run env_PathMaitredPrg &"\SrvMan.exe /f" & env_PathMaitredData &"\bo.ini /x15136 /ac256 /al0", 0, true
+	If checkForPOS Then
+		wait(20)
+		resizeApps
+		pos_AtServerSelection
+	End If
+End Function
+
+'**********COMBINED FUNCTIONS**********
+'Make sure starting environment is clean
+Function startEnvironment
+	Reporter.Filter = 0
+	createFolderStructure
+	clearAllMaitredFiles
+	killProcess "VirtualInvoiceViewer.exe"
+	killHotelApps
+	killAllBoModules
+	'loadStpiClient
+	resizeApps
+	App_BumpAllCVM
+End Function
+
+'Make sure POS is running and at server selection
+Function pos_AtServerSelection
+	resizeApps
+	If htmlPos then
+		If pos_French Then
+			If Browser("Repository - Maitre'D").Page("Maitre'D").WebElement("LECTURE").Exist(10) AND NOT Browser("Repository - Maitre'D").Page("Maitre'D").WebElement("Backdrop").Exist(1) Then
+				serverSelection = TRUE
+			Else 
+				serverSelection = FALSE
+			End If
+		Else
+			If Browser("Repository - Maitre'D").Page("Maitre'D").WebElement("READING").Exist(10) AND NOT Browser("Repository - Maitre'D").Page("Maitre'D").WebElement("Backdrop").Exist(1) Then
+				serverSelection = TRUE
+			Else 
+				serverSelection = FALSE
+			End If
+		End If
+	else
+		serverSelection=Window("Maitre'D POS").WinObject("POS Screen").Check (CheckPoint("posAtServerSelection"))
+	End If
+	If serverSelection Then
+		Reporter.ReportEvent micPass, "Loading BOSRV and POS", "POS is at server selection screen"
+	Else
+		Reporter.ReportEvent micFail, "Loading BOSRV and POS", "POS is NOT at server selection screen!"
+	End If
+	pos_AtServerSelection = serverSelection
+End Function
+
+Function pos_AtOrderScreen
+	If Browser("Repository - Maitre'D").Page("Maitre'D").WebElement("Employee").Exist(10) Then
+		orderScreen = TRUE
+	Else 
+		orderScreen = FALSE
+	End If
+	pos_AtOrderScreen = orderScreen
+End Function
+
+'Make sure end environment is clean
+Function checkEndEnvironment()
+	resizeApps
+	serverSelection = pos_AtServerSelection
+	If NOT serverSelection Then
+		IF restoreOnOpenTable = "TRUE" Then
+			killProcess "VirtualInvoiceViewer.exe"
+			restoreMaitredDatabase
+			resizeApps
+		Else
+			MsgBox("POS not at server selection screen.")
+		End If
+	End If
+	App_BumpAllCVM
+	killHotelApps
+	writeTestResultToSQL knownIssue(0), knownIssue(1)
+End Function
+'**********
+
+'**********HTML POS FUNCTIONS**********
+Function htmlPos_Connect()
+	killProcess "chromedriver.exe"
+	killProcess "WebDriverHost.exe"
+	WebUtil.AttachRemoteDebugging("127.0.0.1:8088")
+End Function
+
+
+'**********
+
+'**********MPOS FUNCTIONS**********
+'Pauses execution until the loading spinner dissapears
+'seconds - specified number of seconds to wait for execution, 0 will wait indefinetely.
+Function mPos_waitForSpinner(seconds)
+	checkInterval = 200 'frequency time (in ms) to check for the spinner
+	opacity = Browser("Posera MPOS").Page("Posera MPOS").WebElement("spinner").GetROProperty("style/opacity")
+	If seconds > 0 Then
+		totalLoops = Int((seconds * 1000) / checkInterval)
+		For i = 1 To totalLoops Step 1
+			wait 0, checkInterval
+			opacity = Browser("Posera MPOS").Page("Posera MPOS").WebElement("spinner").GetROProperty("style/opacity")
+			If opacity = 0 Then
+				i = totalLoops
+			End If
+		Next
+	Else
+		While opacity > 0
+			wait 0, checkInterval
+			opacity = Browser("Posera MPOS").Page("Posera MPOS").WebElement("spinner").GetROProperty("style/opacity")
+		Wend
+	END IF
+End Function
+
+
+'**********
+
+
+'**********RECOVERY FUNCTIONS**********
+Function RecoveryFunction_MissingObject(Object, Method, Arguments, retVal)
+	Reporter.ReportEvent micFail, "Missing Object - Restoring Database", "An object needing interaction was not found during test! Database will be restored"
+	restoreMaitredDatabase
+	 If pos_French Then
+	  Dialog("Cash Drawer, PSI OPOS").WinButton("Close").Click
+	  Dialog("Cash Drawer, PSI OPOS").WinCheckBox("Lock Cashdrawer").Set "ON"
+	 End If 
+	posOK = pos_AtServerSelection
+	If posOK Then
+		Reporter.ReportEvent micPAss, "Missing Object - Restoring Database", "Database restored and POS is now clean"
+	Else
+		Reporter.ReportEvent micFail, "Missing Object - Restoring Database - Critical Suite Error", "Database restored but POS is NOT clean"
+	End If
+	writeTestResultToSQL knownIssue(0), knownIssue(1)
+End Function
+
+Function RecoveryFunction_PosError(Object)
+	If env_LocalComputerName = "AUTOMATED-REGRE" Then
+		detailedResultPath = "HTTP://"& env_ResultsPath_Server &"/"& maitredVersion &"/"& regressionSetName &"/"& qtApp.Test.Name &"/Report"
+	Else
+		detailedResultPath = "HTTP://"& env_ResultsPath_Server &"/DebugResults"& maitredVersion &"/"& regressionSetName &"/"& qtApp.Test.Name &"/Report"
+	End If
+	screenshotPath = Reporter.ReportPath & "\Report\POS Error.bmp"
+	Desktop.CaptureBitmap screenshotPath, TRUE
+	Reporter.ReportHtmlEvent micFail, "<b>POS Error has occured!!! - Restoring Database</b> <br> <a href=""" & detailedResultPath &"/POS Error.bmp"">Click here for screenshot of PC State</a?" , "A POS Error was generated during the current test"
+
+	restoreMaitredDatabase
+	posOK = pos_AtServerSelection
+	If posOK Then
+		Reporter.ReportEvent micPAss, "POS Error has occured - Restoring Database", "Database restored and POS is now clean"
+	Else
+		Reporter.ReportEvent micFail, "POS Error has occured - Restoring Database - Critical Suite Error", "Database restored but POS is NOT clean"
+	End If
+	writeTestResultToSQL knownIssue(0), knownIssue(1)
+End Function 
+
+'**********MevWeb Invoice Viewer*********
+Function loadQRCodeInvoiceViewer()
+	killProcess "VirtualInvoiceViewer2.exe"
+	wait(1)
+	WshShell.Run"""" & env_PathVSMap &"Batch-Apps\Invoice QRCode\VirtualInvoiceViewer2.exe """,1 , False
+	wait(2)
+	resizeInvoiceViewer
+	copyPrintJobs 'copyPrintJobs function - copies files from wsprint to wsprint\invoiceviewer
+	wait(20)
+End Function
+
+
+Function resizeInvoiceViewer()
+	Window("Virtual Invoice Viewer").Resize size_InvoiceViewer(0), size_InvoiceViewer(1)
+	Window("Virtual Invoice Viewer").Move 725, 50	
+End Function
+
+ 
